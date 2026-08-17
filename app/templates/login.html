@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesion - {{ app_name }}{% endblock %}
+{% block body %}
+<div class="min-h-full flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <div class="flex justify-end mb-4">
+      <button id="theme-toggle" type="button"
+              class="p-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900">
+        <span class="dark:hidden">🌙</span>
+        <span class="hidden dark:inline">☀️</span>
+      </button>
+    </div>
+    <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 p-8">
+      <h1 class="text-xl font-semibold text-center mb-1">{{ app_name }}</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">Panel de control de emuladores</p>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1" for="username">Usuario</label>
+          <input id="username" name="username" type="text" required autocomplete="username"
+                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1" for="password">Contrasena</label>
+          <input id="password" name="password" type="password" required autocomplete="current-password"
+                 class="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <p id="login-error" class="text-sm text-red-600 dark:text-red-400 hidden"></p>
+        <button type="submit"
+                class="w-full rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium py-2.5 transition-colors">
+          Entrar
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="/static/js/login.js"></script>
+{% endblock %}

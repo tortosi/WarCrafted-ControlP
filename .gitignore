@@ -1,0 +1,51 @@
+# === Credenciales y configuracion sensible ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === Datos y logs en tiempo de ejecucion ===
+data/
+*.db
+*.sqlite3
+*.log
+logs/
+
+# === Herramientas de frontend (si se anade build de Tailwind) ===
+node_modules/
+
+# === Editores / SO ===
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# === Rastros de asistentes de IA ===
+.claude/
+claude.json
+.claude.json
+.cursor/
+.continue/
+.aider*
+.copilot/
+.github/copilot/
+.clinerules/
+.windsurf/
+CLAUDE.local.md

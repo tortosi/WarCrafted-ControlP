@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Consola - {{ app_name }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+{% endblock %}
+{% block body %}
+<div class="min-h-full flex flex-col">
+  <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="/dashboard" class="text-sm text-brand-600 hover:underline">&larr; Panel</a>
+        <h1 class="text-lg font-semibold">Consola GM</h1>
+      </div>
+      <button id="theme-toggle" type="button"
+              class="p-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900">
+        <span class="dark:hidden">🌙</span>
+        <span class="hidden dark:inline">☀️</span>
+      </button>
+    </div>
+  </header>
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
+    <div id="terminal" class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-black p-2"></div>
+  </main>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script>window.__INSTANCE_ID__ = {{ instance_id | tojson }};</script>
+<script src="/static/js/console.js"></script>
+{% endblock %}

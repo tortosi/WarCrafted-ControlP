@@ -1,0 +1,7 @@
+#terminal {
+  height: 70vh;
+}
+
+#terminal .xterm {
+  padding: 4px;
+}
