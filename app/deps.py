@@ -1,9 +1,46 @@
+import time
+from collections import defaultdict
+
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app import models
 from app.database import SessionLocal
 from app.security import decode_access_token
+
+_login_attempts = defaultdict(list)
+_cleanup_last = 0
+
+
+def _cleanup_old_attempts() -> None:
+    global _cleanup_last
+    now = time.time()
+    if now - _cleanup_last < 60:
+        return
+    _cleanup_last = now
+    for key in list(_login_attempts.keys()):
+        _login_attempts[key] = [t for t in _login_attempts[key] if now - t < 900]
+        if not _login_attempts[key]:
+            del _login_attempts[key]
+
+
+def check_login_rate_limit(request: Request, username: str) -> None:
+    _cleanup_old_attempts()
+    client_ip = request.client.host if request.client else "unknown"
+    key = f"{client_ip}:{username}"
+    now = time.time()
+    _login_attempts[key] = [t for t in _login_attempts[key] if now - t < 900]
+    if len(_login_attempts[key]) >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Demasiados intentos de inicio de sesion. Intenta de nuevo mas tarde."
+        )
+
+
+def record_login_attempt(request: Request, username: str) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    key = f"{client_ip}:{username}"
+    _login_attempts[key].append(time.time())
 
 
 def get_db():

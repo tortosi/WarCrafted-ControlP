@@ -3,6 +3,11 @@ const gridEl = document.getElementById('servers-grid');
 const feedbackEl = document.getElementById('action-feedback');
 let feedbackTimeout = null;
 
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return String(text).replace(/[&<>"']/g, (char) => map[char]);
+}
+
 function showFeedback(message, isError) {
   clearTimeout(feedbackTimeout);
   feedbackEl.textContent = message;
@@ -27,9 +32,9 @@ function serverCard(server) {
       <div class="bg-white dark:bg-gray-900 rounded-xl border border-red-200 dark:border-red-900 p-4 flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-          <h3 class="font-medium">${server.name}</h3>
+          <h3 class="font-medium">${escapeHtml(server.name)}</h3>
         </div>
-        <p class="text-xs text-red-600 dark:text-red-400">${server.error}</p>
+        <p class="text-xs text-red-600 dark:text-red-400">${escapeHtml(server.error)}</p>
       </div>`;
   }
 
@@ -40,7 +45,7 @@ function serverCard(server) {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full ${dotColor}"></span>
-          <h3 class="font-medium">${server.name}</h3>
+          <h3 class="font-medium">${escapeHtml(server.name)}</h3>
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-100">${typeLabel}</span>
       </div>
@@ -59,11 +64,11 @@ function serverCard(server) {
         </div>
       </div>
       <div class="flex gap-2 mt-1">
-        <button data-action="start" data-id="${server.id}" data-name="${server.name}"
+        <button data-action="start" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
                 class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
           Iniciar
         </button>
-        <button data-action="stop" data-id="${server.id}" data-name="${server.name}"
+        <button data-action="stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
                 class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
           Detener
         </button>

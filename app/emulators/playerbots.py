@@ -23,11 +23,12 @@ class PlayerbotsDriver(BaseEmulatorDriver):
                 database=cfg.db_characters,
                 connect_timeout=3,
             )
-            like_clauses = " AND ".join(f"name NOT LIKE '{prefix}%'" for prefix in self.BOT_NAME_PREFIXES)
+            like_clauses = " AND ".join("name NOT LIKE %s" for _ in self.BOT_NAME_PREFIXES)
             query = f"SELECT COUNT(*) FROM characters WHERE online = 1 AND {like_clauses}"
+            params = [f"{prefix}%" for prefix in self.BOT_NAME_PREFIXES]
             with conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query)
+                    cursor.execute(query, params)
                     row = cursor.fetchone()
                     return int(row[0]) if row else 0
         except Exception:

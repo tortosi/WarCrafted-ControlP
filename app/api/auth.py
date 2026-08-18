@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.config import get_settings
-from app.deps import get_current_user, get_db
+from app.deps import check_login_rate_limit, get_current_user, get_db, record_login_attempt
 from app.security import create_access_token, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -11,9 +11,11 @@ settings = get_settings()
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(payload: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(request: Request, payload: schemas.LoginRequest, response: Response, db: Session = Depends(get_db)):
+    check_login_rate_limit(request, payload.username)
     user = db.query(models.User).filter(models.User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.hashed_password):
+        record_login_attempt(request, payload.username)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contrasena incorrectos")
 
     token = create_access_token(subject=user.username)
