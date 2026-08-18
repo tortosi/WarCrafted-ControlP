@@ -174,8 +174,26 @@ pluginsMenuBtn.addEventListener('click', (event) => {
 });
 document.addEventListener('click', () => pluginsMenu.classList.add('hidden'));
 
+async function checkPluginUpdates() {
+  const badge = document.getElementById('store-update-badge');
+  try {
+    const response = await fetch('/api/v1/plugins/catalog');
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.configured) return;
+    const updates = data.plugins.filter((plugin) => plugin.update_available);
+    if (updates.length) {
+      badge.textContent = updates.length;
+      badge.classList.remove('hidden');
+    }
+  } catch (err) {
+    // la tienda no es critica para el dashboard; se ignora en silencio
+  }
+}
+
 refreshStats();
 refreshServers();
 loadPluginsMenu();
+checkPluginUpdates();
 setInterval(refreshStats, 5000);
 setInterval(refreshServers, 5000);
