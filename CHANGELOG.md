@@ -8,6 +8,7 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ### Anadido
 - Las tarjetas de instancia muestran tambien el % de CPU como capacidad del host (ademas del % por-proceso, normalizado a 1 nucleo = 100%), para que no parezca un error ver, p. ej., 179% de CPU en una instancia con el host al 68%.
+- Antes de aplicar cualquier actualizacion (de un plugin o del propio panel) aparece un modal con la version actual, la disponible, y un resumen en texto de que cambia (la seccion correspondiente de `CHANGELOG.md` para el panel, o el campo opcional `changelog` del `manifest.json` para plugins), con opcion de aceptar o demorarla.
 
 ## [0.3.0] - 2026-08-18
 

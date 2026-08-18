@@ -10,7 +10,40 @@ const panelUpdateCard = document.getElementById('panel-update-card');
 const panelVersionText = document.getElementById('panel-version-text');
 const panelUpdateAction = document.getElementById('panel-update-action');
 const panelUpdateLog = document.getElementById('panel-update-log');
+const updateConfirmModal = document.getElementById('update-confirm-modal');
+const updateConfirmTitle = document.getElementById('update-confirm-title');
+const updateConfirmSubtitle = document.getElementById('update-confirm-subtitle');
+const updateConfirmChangelog = document.getElementById('update-confirm-changelog');
+const updateConfirmPostpone = document.getElementById('update-confirm-postpone');
+const updateConfirmAccept = document.getElementById('update-confirm-accept');
 let feedbackTimeout = null;
+let catalogBySlug = {};
+let lastPanelUpdateInfo = null;
+
+function confirmUpdate({ title, fromVersion, toVersion, changelog }) {
+  return new Promise((resolve) => {
+    updateConfirmTitle.textContent = title;
+    updateConfirmSubtitle.textContent = fromVersion
+      ? `Version instalada: v${fromVersion} → disponible: v${toVersion}`
+      : `Nueva version: v${toVersion}`;
+    updateConfirmChangelog.textContent = changelog && changelog.trim()
+      ? changelog.trim()
+      : 'No hay notas para esta version. Puedes revisar el repositorio si quieres mas detalle antes de actualizar.';
+    updateConfirmModal.classList.remove('hidden');
+
+    function cleanup(result) {
+      updateConfirmModal.classList.add('hidden');
+      updateConfirmAccept.removeEventListener('click', onAccept);
+      updateConfirmPostpone.removeEventListener('click', onPostpone);
+      resolve(result);
+    }
+    function onAccept() { cleanup(true); }
+    function onPostpone() { cleanup(false); }
+
+    updateConfirmAccept.addEventListener('click', onAccept);
+    updateConfirmPostpone.addEventListener('click', onPostpone);
+  });
+}
 
 function escapeHtml(text) {
   const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
@@ -104,6 +137,7 @@ async function loadCatalog() {
 
     emptyStateEl.classList.add('hidden');
     gridEl.classList.remove('hidden');
+    catalogBySlug = Object.fromEntries(data.plugins.map((p) => [p.slug, p]));
     gridEl.innerHTML = data.plugins.length
       ? data.plugins.map(pluginCard).join('')
       : '<p class="text-sm text-gray-500 dark:text-gray-400 col-span-full">No hay plugins publicados en el repositorio.</p>';
@@ -132,7 +166,19 @@ function renderPanelUpdateButton(installedVersion, remoteVersion) {
             class="text-xs px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white">
       Actualizar a v${escapeHtml(remoteVersion)}
     </button>`;
-  document.getElementById('panel-update-btn').addEventListener('click', updatePanel);
+  document.getElementById('panel-update-btn').addEventListener('click', onPanelUpdateClick);
+}
+
+async function onPanelUpdateClick() {
+  const info = lastPanelUpdateInfo || {};
+  const confirmed = await confirmUpdate({
+    title: 'Actualizar el panel principal',
+    fromVersion: info.installed_version,
+    toVersion: info.remote_version,
+    changelog: info.changelog,
+  });
+  if (!confirmed) return;
+  await updatePanel();
 }
 
 function renderPanelRestartButton(newVersion) {
@@ -154,8 +200,10 @@ async function loadPanelStatus() {
 
     panelUpdateCard.classList.remove('hidden');
     if (data.update_available) {
+      lastPanelUpdateInfo = data;
       renderPanelUpdateButton(data.installed_version, data.remote_version);
     } else {
+      lastPanelUpdateInfo = null;
       renderPanelUpToDate(data.installed_version);
     }
   } catch (err) {
@@ -222,8 +270,15 @@ const ACTION_LABELS = {
 };
 
 async function runPluginAction(action, slug, button) {
-  if (action === 'update' && !window.confirm(`¿Actualizar "${slug}" a la ultima version? Sus rutas se recargan al momento.`)) {
-    return;
+  if (action === 'update') {
+    const plugin = catalogBySlug[slug] || {};
+    const confirmed = await confirmUpdate({
+      title: `Actualizar ${plugin.name || slug}`,
+      fromVersion: plugin.installed_version,
+      toVersion: plugin.version,
+      changelog: plugin.changelog,
+    });
+    if (!confirmed) return;
   }
 
   const labels = ACTION_LABELS[action];

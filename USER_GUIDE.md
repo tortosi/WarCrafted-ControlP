@@ -58,6 +58,8 @@ El boton **Tienda** (junto al menu de Plugins) abre el catalogo de modulos dispo
 
 Arriba del catalogo, la tarjeta **Panel principal** hace lo mismo para el propio panel — ver "Autoactualizacion del panel" en `INSTALL.md` para el detalle (incluye reiniciar el proceso para aplicar cambios).
 
+Antes de aplicar cualquier actualizacion (de un plugin o del panel), un modal muestra la version actual, la disponible, y un resumen de que cambia; puedes **Aceptar y actualizar** o **Demorar** (no pasa nada si demoras: el boton de actualizar sigue ahi para la proxima vez).
+
 Solo un administrador puede configurar el token, instalar/actualizar modulos, o actualizar/reiniciar el panel.
 
 ## Consola GM

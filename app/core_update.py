@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -19,11 +20,25 @@ logger = logging.getLogger(__name__)
 VERSION_FILE = BASE_DIR / "VERSION"
 REQUIREMENTS_FILE = BASE_DIR / "requirements.txt"
 
+_CHANGELOG_HEADER_RE = re.compile(r"^## \[", re.MULTILINE)
+
 
 def current_version() -> str:
     if VERSION_FILE.exists():
         return VERSION_FILE.read_text().strip()
     return "0.0.0"
+
+
+def _extract_changelog_section(changelog_text: str, version: str) -> str:
+    """Extrae el bloque de un CHANGELOG.md (formato Keep a Changelog) para `version`."""
+    match = re.search(rf"^## \[{re.escape(version)}\].*$", changelog_text, re.MULTILINE)
+    if not match:
+        return ""
+    start = match.end()
+    rest = changelog_text[start:]
+    next_header = _CHANGELOG_HEADER_RE.search(rest)
+    section = rest[: next_header.start()] if next_header else rest
+    return re.sub(r"^### +", "", section.strip(), flags=re.MULTILINE)
 
 
 def check_update(token: str, repo: str) -> dict:
@@ -36,10 +51,19 @@ def check_update(token: str, repo: str) -> dict:
         )
     remote_version = remote_version.strip()
     installed = current_version()
+    update_available = installed != remote_version
+
+    changelog = ""
+    if update_available:
+        changelog_text = fetch_repo_file(token, repo, "CHANGELOG.md")
+        if changelog_text:
+            changelog = _extract_changelog_section(changelog_text, remote_version)
+
     return {
         "installed_version": installed,
         "remote_version": remote_version,
-        "update_available": installed != remote_version,
+        "update_available": update_available,
+        "changelog": changelog,
     }
 
 

@@ -54,6 +54,7 @@ def fetch_catalog(token: str, repo: str) -> list[dict]:
                 "name": manifest.get("name", name),
                 "version": manifest.get("version", "0.0.0"),
                 "description": manifest.get("description", ""),
+                "changelog": manifest.get("changelog", ""),
                 "installed": (PLUGINS_DIR / name).is_dir(),
             }
         )
