@@ -51,8 +51,9 @@ function serverCard(server) {
       </div>
       <div class="grid grid-cols-3 gap-2 text-center text-sm">
         <div>
-          <p class="text-gray-400 text-xs">CPU</p>
+          <p class="text-gray-400 text-xs" title="Normalizado a 1 nucleo = 100%; un proceso multihilo puede superar el 100%.">CPU</p>
           <p class="font-medium">${server.cpu_percent != null ? server.cpu_percent + '%' : '-'}</p>
+          ${server.cpu_percent_host != null ? `<p class="text-[10px] text-gray-400" title="Equivalente en % de la capacidad total del host, comparable con el CPU del host de arriba.">${server.cpu_percent_host}% host</p>` : ''}
         </div>
         <div>
           <p class="text-gray-400 text-xs">RAM</p>

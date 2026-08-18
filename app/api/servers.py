@@ -19,7 +19,14 @@ def list_servers(
         info = (
             driver.get_status()
             if driver.config.enabled
-            else {"online": False, "pid": None, "cpu_percent": None, "memory_mb": None, "players_online": None}
+            else {
+                "online": False,
+                "pid": None,
+                "cpu_percent": None,
+                "cpu_percent_host": None,
+                "memory_mb": None,
+                "players_online": None,
+            }
         )
         summaries.append(
             schemas.ServerSummary(
@@ -30,6 +37,7 @@ def list_servers(
                 online=info["online"],
                 pid=info["pid"],
                 cpu_percent=info["cpu_percent"],
+                cpu_percent_host=info["cpu_percent_host"],
                 memory_mb=info["memory_mb"],
                 players_online=info["players_online"],
             )

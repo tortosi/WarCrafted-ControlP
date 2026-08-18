@@ -6,6 +6,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+### Anadido
+- Las tarjetas de instancia muestran tambien el % de CPU como capacidad del host (ademas del % por-proceso, normalizado a 1 nucleo = 100%), para que no parezca un error ver, p. ej., 179% de CPU en una instancia con el host al 68%.
+
 ## [0.3.0] - 2026-08-18
 
 ### Anadido

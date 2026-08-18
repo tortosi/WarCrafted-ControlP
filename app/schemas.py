@@ -40,6 +40,7 @@ class ServerSummary(BaseModel):
     online: bool
     pid: int | None = None
     cpu_percent: float | None = None
+    cpu_percent_host: float | None = None
     memory_mb: float | None = None
     players_online: int | None = None
     error: str | None = None

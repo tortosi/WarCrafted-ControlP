@@ -126,16 +126,27 @@ class BaseEmulatorDriver(ABC):
     def get_process_status(self) -> dict:
         proc = self.find_process()
         if not proc:
-            return {"online": False, "pid": None, "cpu_percent": None, "memory_mb": None}
+            return {"online": False, "pid": None, "cpu_percent": None, "cpu_percent_host": None, "memory_mb": None}
         try:
             # cpu_percent(interval=...) hace una medicion "antes/despues" con sleep real;
             # llamarlo dentro de oneshot() reutiliza el valor "antes" cacheado y siempre da 0%.
+            # Esta normalizado a 1 nucleo = 100%, asi que un proceso multihilo puede superar
+            # el 100% (ej. 179% con 2 nucleos casi saturados); cpu_percent_host lo reexpresa
+            # como % de la capacidad total del host, comparable con el CPU del host del dashboard.
             cpu_percent = proc.cpu_percent(interval=0.1)
+            cpu_count = psutil.cpu_count() or 1
+            cpu_percent_host = round(cpu_percent / cpu_count, 1)
             with proc.oneshot():
                 memory_mb = round(proc.memory_info().rss / (1024 * 1024), 1)
-            return {"online": True, "pid": proc.pid, "cpu_percent": cpu_percent, "memory_mb": memory_mb}
+            return {
+                "online": True,
+                "pid": proc.pid,
+                "cpu_percent": cpu_percent,
+                "cpu_percent_host": cpu_percent_host,
+                "memory_mb": memory_mb,
+            }
         except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return {"online": False, "pid": None, "cpu_percent": None, "memory_mb": None}
+            return {"online": False, "pid": None, "cpu_percent": None, "cpu_percent_host": None, "memory_mb": None}
 
     def execute_soap_command(self, command: str) -> str:
         return self.soap.execute(command)

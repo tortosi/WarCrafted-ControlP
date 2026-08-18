@@ -30,7 +30,7 @@ Cada instancia configurada en `.env` aparece como una tarjeta con:
 
 - **Indicador de estado**: punto verde si el proceso esta en ejecucion, gris si esta detenido.
 - **Tipo de emulador**: etiqueta "AzerothCore" o "Playerbots".
-- **CPU / RAM**: consumo real del proceso `worldserver` de esa instancia (cada instancia se identifica por su propio PID y su `WORKDIR`, asi que dos instancias que comparten el mismo binario no se mezclan entre si).
+- **CPU / RAM**: consumo real del proceso `worldserver` de esa instancia (cada instancia se identifica por su propio PID y su `WORKDIR`, asi que dos instancias que comparten el mismo binario no se mezclan entre si). El % de CPU esta normalizado a 1 nucleo = 100% (puede superar el 100% en un proceso multihilo con varios nucleos ocupados); debajo aparece el mismo dato como % de la capacidad total del host, comparable con el CPU del host de las tarjetas de arriba.
 - **Jugadores**: numero de personajes conectados. En instancias Playerbots, las cuentas de bots se excluyen del conteo para reflejar solo jugadores humanos.
 
 Si una instancia tiene una configuracion invalida (por ejemplo `INSTANCE_<N>_TYPE` no reconocible), aparece igualmente en el dashboard como una tarjeta roja con el motivo del error, en vez de desaparecer sin explicacion.
