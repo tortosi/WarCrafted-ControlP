@@ -4,6 +4,13 @@ Todas las modificaciones relevantes de este proyecto se documentan en este archi
 
 El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y este proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Anadido
+- Menu desplegable "Plugins" en la barra superior del panel: consume `GET /api/v1/plugins/` y enlaza los modulos que declaren `ui.has_ui: true` en su `manifest.json` (titulo, ruta e icono definidos por cada plugin).
+- El loader de plugins expone metadatos de interfaz (`ui.has_ui`, `ui.title`, `ui.route`, `ui.icon`) y el core los publica mediante `app/api/plugins.py`.
+- Tienda de Plugins (`/plugins/store`): conecta un Personal Access Token de GitHub (`POST /api/v1/plugins/setup-token`, guardado en `GITHUB_PLUGIN_TOKEN` dentro de `.env`), lista el catalogo del repo `WarCraftedCP-plugins` (`GET /api/v1/plugins/catalog`) marcando que modulos ya estan instalados, e instala uno con un clic (`POST /api/v1/plugins/install/{nombre}`): descarga el tarball del repo, extrae solo esa carpeta en `app/plugins/<nombre>/` y lo monta en caliente sin reiniciar el panel. Requiere permisos de administrador.
+
 ## [0.2.0] - 2026-08-18
 
 ### Corregido

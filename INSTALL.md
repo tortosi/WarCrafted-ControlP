@@ -121,6 +121,15 @@ Ambos scripts activan el entorno virtual, cargan `.env` y arrancan Uvicorn en el
 
 Los modulos (plugins) se desarrollan en el repositorio independiente `WarCraftedCP-plugins`. El panel los descubre automaticamente si sus carpetas quedan como hijas directas de `app/plugins/`.
 
+### Opcion A: desde la Tienda de Plugins (recomendado)
+
+Con el panel en marcha, entra como administrador y abre **Tienda** en la barra superior:
+
+1. La primera vez, pulsa **Token de GitHub** y sigue las instrucciones para generar un *Personal Access Token* (fine-grained) con permiso **Contents: Read-only** sobre `WarCraftedCP-plugins`. Se valida y se guarda en `.env` (`GITHUB_PLUGIN_TOKEN`) automaticamente.
+2. La tienda lista los modulos del repositorio; pulsa **Instalar** en el que quieras. Se descarga, se extrae en `app/plugins/<nombre>/` y se monta en caliente, sin reiniciar el panel.
+
+### Opcion B: manual
+
 ```bash
 # Desde la raiz de WarCrafted-ControlP
 rm -rf app/plugins/migration app/plugins/<otro-modulo>   # si ya existian versiones previas
@@ -134,14 +143,9 @@ O bien, para tener el monorepo entero sincronizado por git dentro de `app/plugin
 git clone <url-de-WarCraftedCP-plugins> app/plugins
 ```
 
-Cada modulo puede traer su propio `requirements.txt` con dependencias de terceros. Instalalas en el mismo entorno virtual del panel antes de arrancar, o el modulo se omite en silencio:
+Los modulos no traen `requirements.txt` propio: sus dependencias de terceros ya estan incluidas en el `requirements.txt` del panel (comparten el mismo venv). Si un modulo nuevo requiere una libreria que aun no esta instalada, anadela ahi.
 
-```bash
-source .venv/bin/activate
-pip install -r app/plugins/<nombre-modulo>/requirements.txt
-```
-
-Reinicia el panel (`./run.sh` / `run.bat`, o `systemctl restart warcrafted-controlp` si corre como servicio) para que `app/plugins/loader.py` los detecte; la carga solo ocurre al arrancar. Cada modulo queda montado en `/api/v1/plugins/<nombre-de-carpeta>`. Revisa el log de arranque para confirmar `Plugin '<nombre>' vX.X.X cargado desde <carpeta>`; si un modulo no aparece, falta `router.py` (o no exporta un `APIRouter` valido) o hay un `ImportError` por dependencias sin instalar.
+Reinicia el panel (`./run.sh` / `run.bat`, o `systemctl restart warcrafted-controlp` si corre como servicio) para que `app/plugins/loader.py` los detecte; la carga manual solo ocurre al arrancar (la Tienda, en cambio, monta el modulo sin reiniciar). Cada modulo queda montado en `/api/v1/plugins/<nombre-de-carpeta>`. Revisa el log de arranque para confirmar `Plugin '<nombre>' vX.X.X cargado desde <carpeta>`; si un modulo no aparece, falta `router.py` (o no exporta un `APIRouter` valido).
 
 ## Ejecucion como servicio (opcional, Linux con systemd)
 

@@ -24,6 +24,10 @@ class CommandRequest(BaseModel):
     command: str
 
 
+class GithubTokenRequest(BaseModel):
+    token: str
+
+
 class CommandResult(BaseModel):
     output: str
 

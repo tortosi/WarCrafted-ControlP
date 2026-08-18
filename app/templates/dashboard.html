@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Panel - {{ app_name }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+{% endblock %}
 {% block body %}
 <div class="min-h-full flex flex-col">
   <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -7,6 +10,22 @@
       <h1 class="text-lg font-semibold">{{ app_name }}</h1>
       <div class="flex items-center gap-3">
         <span class="text-sm text-gray-500 dark:text-gray-400">{{ user.username }}</span>
+        <a href="/plugins/store"
+           class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center gap-1.5">
+          <i class="fa-solid fa-store text-gray-400"></i>
+          Tienda
+        </a>
+        <div class="relative">
+          <button id="plugins-menu-btn" type="button"
+                  class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center gap-1.5">
+            Plugins
+            <i class="fa-solid fa-chevron-down text-[10px] text-gray-400"></i>
+          </button>
+          <div id="plugins-menu"
+               class="hidden absolute right-0 mt-2 w-56 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg py-1 z-20">
+            <p class="px-3 py-2 text-sm text-gray-400">Cargando...</p>
+          </div>
+        </div>
         <button id="theme-toggle" type="button"
                 class="p-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900">
           <span class="dark:hidden">🌙</span>

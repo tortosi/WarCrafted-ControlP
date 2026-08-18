@@ -43,6 +43,20 @@ Cada tarjeta incluye tres acciones:
 | **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. |
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
 
+## Menu de plugins
+
+Junto al nombre de usuario, el boton **Plugins** despliega un menu con los modulos instalados que tienen interfaz propia (los que declaran `ui.has_ui: true` en su `manifest.json`). Cada entrada enlaza directamente a la pantalla del plugin; si ninguno tiene interfaz, el menu lo indica.
+
+## Tienda de Plugins
+
+El boton **Tienda** (junto al menu de Plugins) abre el catalogo de modulos disponibles en el repositorio `WarCraftedCP-plugins`, para instalarlos sin tocar la linea de comandos.
+
+- **Sin token de GitHub**: la tienda muestra un aviso para conectar uno. Pulsa **Configurar token de GitHub**, sigue las instrucciones del modal para crear un *Personal Access Token* (fine-grained) con permiso **Contents: Read-only** sobre ese repositorio, y pegalo. Se verifica contra GitHub y se guarda; nunca se muestra de nuevo una vez guardado.
+- **Con token**: aparece una cuadricula con cada modulo (nombre, version, descripcion) y un boton **Instalar**, o la etiqueta **Instalado** si ya esta presente en `app/plugins/`.
+- Al instalar, el modulo se descarga y se monta de inmediato — no hace falta reiniciar el panel. Aparece un enlace **Abrir** si el modulo tiene interfaz propia, y la proxima vez que cargues el menu **Plugins** ya lo veras ahi.
+
+Solo un administrador puede configurar el token o instalar modulos.
+
 ## Consola GM
 
 La consola reproduce una terminal (basada en Xterm.js) conectada por WebSocket al panel. Cada linea que escribas y envies con **Enter** se ejecuta como comando GM contra el servicio SOAP de la instancia, y la respuesta del servidor se muestra a continuacion.

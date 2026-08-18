@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     app_db_url: str = "sqlite:///./data/app.db"
 
+    github_plugin_token: str = ""
+    github_plugin_repo: str = "tortosi/WarCraftedCP-plugins"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

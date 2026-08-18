@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app import models
-from app.api import auth, console, servers, system
+from app.api import auth, console, plugins as plugins_api, servers, system
 from app.config import BASE_DIR, get_settings
 from app.database import init_db
 from app.deps import get_db
@@ -40,8 +40,12 @@ app.include_router(auth.router)
 app.include_router(servers.router)
 app.include_router(system.router)
 app.include_router(console.router)
+app.include_router(plugins_api.router)
 
-for plugin_name, router, metadata in load_plugins():
+loaded_plugins = load_plugins()
+app.state.plugins = loaded_plugins
+
+for plugin_name, router, metadata in loaded_plugins:
     prefix = f"/api/v1/plugins/{plugin_name}"
     app.include_router(router, prefix=prefix, tags=[f"plugin: {metadata.name}"])
     if metadata.description:
@@ -79,6 +83,16 @@ def dashboard_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login")
     return templates.TemplateResponse(
         "dashboard.html", {"request": request, "app_name": settings.app_name, "user": user}
+    )
+
+
+@app.get("/plugins/store")
+def plugin_store_page(request: Request, db: Session = Depends(get_db)):
+    user = _current_user_or_none(request, db)
+    if not user:
+        return RedirectResponse(url="/login")
+    return templates.TemplateResponse(
+        "plugin_store.html", {"request": request, "app_name": settings.app_name, "user": user}
     )
 
 

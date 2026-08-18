@@ -139,7 +139,43 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   window.location.href = '/login';
 });
 
+const pluginsMenuBtn = document.getElementById('plugins-menu-btn');
+const pluginsMenu = document.getElementById('plugins-menu');
+
+function pluginMenuItem(plugin) {
+  const icon = plugin.icon ? `<i class="fa-solid ${escapeHtml(plugin.icon)} w-4 text-center text-gray-400"></i>` : '';
+  return `
+    <a href="${escapeHtml(plugin.route)}" class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+      ${icon}
+      ${escapeHtml(plugin.title)}
+    </a>`;
+}
+
+async function loadPluginsMenu() {
+  try {
+    const response = await fetch('/api/v1/plugins/');
+    if (!response.ok) {
+      pluginsMenu.innerHTML = '<p class="px-3 py-2 text-sm text-gray-400">No se pudo cargar los plugins</p>';
+      return;
+    }
+    const pluginsList = await response.json();
+    const withUi = pluginsList.filter((plugin) => plugin.has_ui && plugin.route);
+    pluginsMenu.innerHTML = withUi.length
+      ? withUi.map(pluginMenuItem).join('')
+      : '<p class="px-3 py-2 text-sm text-gray-400">Sin plugins con interfaz</p>';
+  } catch (err) {
+    pluginsMenu.innerHTML = '<p class="px-3 py-2 text-sm text-gray-400">No se pudo cargar los plugins</p>';
+  }
+}
+
+pluginsMenuBtn.addEventListener('click', (event) => {
+  event.stopPropagation();
+  pluginsMenu.classList.toggle('hidden');
+});
+document.addEventListener('click', () => pluginsMenu.classList.add('hidden'));
+
 refreshStats();
 refreshServers();
+loadPluginsMenu();
 setInterval(refreshStats, 5000);
 setInterval(refreshServers, 5000);
