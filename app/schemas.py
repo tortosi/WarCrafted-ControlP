@@ -38,6 +38,7 @@ class ServerSummary(BaseModel):
     cpu_percent: float | None = None
     memory_mb: float | None = None
     players_online: int | None = None
+    error: str | None = None
 
 
 class SystemStats(BaseModel):

@@ -30,8 +30,10 @@ Cada instancia configurada en `.env` aparece como una tarjeta con:
 
 - **Indicador de estado**: punto verde si el proceso esta en ejecucion, gris si esta detenido.
 - **Tipo de emulador**: etiqueta "AzerothCore" o "Playerbots".
-- **CPU / RAM**: consumo del proceso `worldserver` de esa instancia.
+- **CPU / RAM**: consumo real del proceso `worldserver` de esa instancia (cada instancia se identifica por su propio PID y su `WORKDIR`, asi que dos instancias que comparten el mismo binario no se mezclan entre si).
 - **Jugadores**: numero de personajes conectados. En instancias Playerbots, las cuentas de bots se excluyen del conteo para reflejar solo jugadores humanos.
+
+Si una instancia tiene una configuracion invalida (por ejemplo `INSTANCE_<N>_TYPE` no reconocible), aparece igualmente en el dashboard como una tarjeta roja con el motivo del error, en vez de desaparecer sin explicacion.
 
 Cada tarjeta incluye tres acciones:
 
@@ -44,6 +46,12 @@ Cada tarjeta incluye tres acciones:
 ## Consola GM
 
 La consola reproduce una terminal (basada en Xterm.js) conectada por WebSocket al panel. Cada linea que escribas y envies con **Enter** se ejecuta como comando GM contra el servicio SOAP de la instancia, y la respuesta del servidor se muestra a continuacion.
+
+La consola es una ventana flotante dentro de la pagina:
+
+- **Mover**: arrastra la cabecera superior ("Consola GM — ...") a cualquier punto de la pantalla.
+- **Redimensionar**: arrastra cualquiera de los bordes o esquinas de la ventana; el terminal se reajusta automaticamente al nuevo tamano.
+- **Historial de comandos**: usa las flechas **↑** / **↓** para recuperar comandos que ya enviaste, igual que en una terminal normal.
 
 Ejemplos de comandos utiles:
 

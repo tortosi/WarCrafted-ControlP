@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app import models, schemas
 from app.deps import get_current_user
-from app.emulators.base import BaseEmulatorDriver
+from app.emulators.base import BaseEmulatorDriver, ProcessControlError
 from app.emulators.manager import EmulatorManager, get_manager
 from app.soap.client import SoapError
 
@@ -34,6 +34,19 @@ def list_servers(
                 players_online=info["players_online"],
             )
         )
+
+    for config, message in manager.list_invalid():
+        summaries.append(
+            schemas.ServerSummary(
+                id=config.id,
+                name=config.name,
+                type=config.type,
+                enabled=config.enabled,
+                online=False,
+                error=message,
+            )
+        )
+
     return summaries
 
 
@@ -51,7 +64,10 @@ def start_server(
     manager: EmulatorManager = Depends(get_manager),
 ):
     driver = _get_driver_or_404(instance_id, manager)
-    return {"detail": driver.start()}
+    try:
+        return driver.start()
+    except ProcessControlError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
 
 @router.post("/{instance_id}/stop")
@@ -62,8 +78,8 @@ def stop_server(
 ):
     driver = _get_driver_or_404(instance_id, manager)
     try:
-        return {"detail": driver.stop()}
-    except SoapError as exc:
+        return driver.stop()
+    except ProcessControlError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 

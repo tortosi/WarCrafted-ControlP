@@ -8,8 +8,8 @@ Permite monitorizar el estado de los procesos, consultar jugadores conectados, i
 
 - **Multi-emulador**: gestiona varias instancias de AzerothCore y AzerothCore + Playerbots desde un unico panel.
 - **Arquitectura de drivers extensible**: cada tipo de emulador implementa una interfaz comun (`app/emulators/base.py`), lo que permite anadir nuevos tipos sin tocar el resto de la aplicacion.
-- **Consola GM en tiempo real** via WebSocket + Xterm.js, con ejecucion de comandos a traves del servicio SOAP de AzerothCore.
-- **Tarjetas de estado**: CPU, RAM y jugadores online por instancia, ademas de estadisticas del host.
+- **Consola GM en tiempo real** via WebSocket + Xterm.js, como panel flotante movible y redimensionable, con historial de comandos (↑/↓) y ejecucion via SOAP.
+- **Tarjetas de estado**: CPU, RAM y jugadores online por instancia, ademas de estadisticas del host. Cada instancia se identifica por su propio PID y `WORKDIR`, evitando cruces entre instancias que comparten el mismo binario.
 - **Autenticacion segura**: usuario/contrasena con hash bcrypt y sesiones JWT en cookie httpOnly.
 - **Tema claro/oscuro** intercambiable con un clic, con persistencia en el navegador.
 - **Autoinstalacion** multiplataforma (`install.sh` / `install.bat`).
@@ -42,7 +42,7 @@ WarCrafted-ControlP/
 │   ├── models.py            # Modelos de base de datos
 │   ├── schemas.py            # Esquemas Pydantic
 │   └── security.py            # Hash de contrasenas y JWT
-├── data/                # Base de datos SQLite del panel (no versionada)
+├── data/                # Base de datos SQLite, PIDs y logs por instancia (no versionada)
 ├── install.sh / install.bat  # Autoinstalacion Linux / Windows
 ├── run.sh / run.bat          # Arranque del panel
 ├── requirements.txt

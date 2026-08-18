@@ -1,5 +1,16 @@
 const statsEl = document.getElementById('system-stats');
 const gridEl = document.getElementById('servers-grid');
+const feedbackEl = document.getElementById('action-feedback');
+let feedbackTimeout = null;
+
+function showFeedback(message, isError) {
+  clearTimeout(feedbackTimeout);
+  feedbackEl.textContent = message;
+  feedbackEl.className = isError
+    ? 'text-sm rounded-lg px-4 py-3 whitespace-pre-wrap bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800'
+    : 'text-sm rounded-lg px-4 py-3 whitespace-pre-wrap bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-800';
+  feedbackTimeout = setTimeout(() => feedbackEl.classList.add('hidden'), 8000);
+}
 
 function statCard(label, value, sub) {
   return `
@@ -11,6 +22,17 @@ function statCard(label, value, sub) {
 }
 
 function serverCard(server) {
+  if (server.error) {
+    return `
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-red-200 dark:border-red-900 p-4 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+          <h3 class="font-medium">${server.name}</h3>
+        </div>
+        <p class="text-xs text-red-600 dark:text-red-400">${server.error}</p>
+      </div>`;
+  }
+
   const dotColor = server.online ? 'bg-emerald-500' : 'bg-gray-400';
   const typeLabel = server.type === 'playerbots' ? 'Playerbots' : 'AzerothCore';
   return `
@@ -37,11 +59,11 @@ function serverCard(server) {
         </div>
       </div>
       <div class="flex gap-2 mt-1">
-        <button data-action="start" data-id="${server.id}"
+        <button data-action="start" data-id="${server.id}" data-name="${server.name}"
                 class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
           Iniciar
         </button>
-        <button data-action="stop" data-id="${server.id}"
+        <button data-action="stop" data-id="${server.id}" data-name="${server.name}"
                 class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
           Detener
         </button>
@@ -88,11 +110,20 @@ async function refreshServers() {
 gridEl.addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
-  const { action, id } = button.dataset;
+  const { action, id, name } = button.dataset;
+  const actionLabel = action === 'start' ? 'iniciar' : 'detener';
   button.disabled = true;
   try {
-    await fetch(`/api/servers/${id}/${action}`, { method: 'POST' });
+    const response = await fetch(`/api/servers/${id}/${action}`, { method: 'POST' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showFeedback(`No se pudo ${actionLabel} "${name}": ${data.detail || 'error desconocido'}`, true);
+    } else if (data.detail) {
+      showFeedback(`${name}: ${data.detail}`, data.success === false);
+    }
     await refreshServers();
+  } catch (err) {
+    showFeedback(`Error de conexion al intentar ${actionLabel} "${name}".`, true);
   } finally {
     button.disabled = false;
   }

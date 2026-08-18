@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
 {% endblock %}
 {% block body %}
-<div class="min-h-full flex flex-col">
+<div class="h-full flex flex-col">
   <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
     <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -18,8 +18,25 @@
       </button>
     </div>
   </header>
-  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
-    <div id="terminal" class="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-black p-2"></div>
+  <main class="flex-1 relative overflow-hidden">
+    <div id="console-window"
+         class="absolute flex flex-col rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 bg-black overflow-hidden">
+      <div id="console-header"
+           class="shrink-0 cursor-move select-none flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-300">
+        <span>Consola GM &mdash; {{ instance_id }}</span>
+        <span class="text-gray-400">arrastra para mover</span>
+      </div>
+      <div id="terminal" class="flex-1 min-h-0 p-2"></div>
+
+      <div class="resize-handle" data-dir="n"></div>
+      <div class="resize-handle" data-dir="s"></div>
+      <div class="resize-handle" data-dir="e"></div>
+      <div class="resize-handle" data-dir="w"></div>
+      <div class="resize-handle resize-handle-corner" data-dir="ne"></div>
+      <div class="resize-handle resize-handle-corner" data-dir="nw"></div>
+      <div class="resize-handle resize-handle-corner" data-dir="se"></div>
+      <div class="resize-handle resize-handle-corner" data-dir="sw"></div>
+    </div>
   </main>
 </div>
 {% endblock %}

@@ -1,7 +1,70 @@
-#terminal {
-  height: 70vh;
+#console-window {
+  min-width: 360px;
+  min-height: 240px;
 }
 
-#terminal .xterm {
-  padding: 4px;
+.resize-handle {
+  position: absolute;
+}
+
+.resize-handle[data-dir="n"] {
+  top: -3px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-handle[data-dir="s"] {
+  bottom: -3px;
+  left: 10px;
+  right: 10px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-handle[data-dir="e"] {
+  right: -3px;
+  top: 10px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-handle[data-dir="w"] {
+  left: -3px;
+  top: 10px;
+  bottom: 10px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-handle-corner {
+  width: 14px;
+  height: 14px;
+  z-index: 1;
+}
+
+.resize-handle[data-dir="ne"] {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+
+.resize-handle[data-dir="nw"] {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+
+.resize-handle[data-dir="se"] {
+  bottom: -4px;
+  right: -4px;
+  cursor: nwse-resize;
+}
+
+.resize-handle[data-dir="sw"] {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
 }

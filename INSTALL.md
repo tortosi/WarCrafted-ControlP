@@ -81,7 +81,7 @@ Cada instancia se define con variables numeradas usando el prefijo `INSTANCE_<N>
 |---|---|
 | `INSTANCE_<N>_ENABLED` | `true`/`false`, activa o desactiva la instancia sin borrarla |
 | `INSTANCE_<N>_NAME` | Nombre mostrado en el panel |
-| `INSTANCE_<N>_TYPE` | `azerothcore` o `playerbots` |
+| `INSTANCE_<N>_TYPE` | `azerothcore` o `playerbots` (tambien se aceptan variantes que contengan esas palabras, p. ej. `playerbots-acore`) |
 | `INSTANCE_<N>_WORLD_PROCESS` | Nombre del proceso del worldserver a monitorizar |
 | `INSTANCE_<N>_AUTH_PROCESS` | Nombre del proceso del authserver |
 | `INSTANCE_<N>_START_CMD` | Ruta al ejecutable usado para iniciar el worldserver |
@@ -93,6 +93,8 @@ Cada instancia se define con variables numeradas usando el prefijo `INSTANCE_<N>
 | `INSTANCE_<N>_DB_CHARACTERS` | Nombre de la base de datos `characters` del emulador |
 
 Consulta `.env.example` para ver un ejemplo completo con dos instancias (una AzerothCore y una Playerbots).
+
+> **Importante:** si dos instancias comparten el mismo `WORLD_PROCESS` (p.ej. ambas usan el binario `worldserver`), el panel las distingue por su `WORKDIR`. Define siempre `INSTANCE_<N>_WORKDIR` con la ruta absoluta y distinta de cada instalacion; si se omite, el panel no puede garantizar que "Iniciar"/"Detener" actuen solo sobre esa instancia.
 
 ### Habilitar el servicio SOAP en AzerothCore
 
@@ -140,11 +142,16 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now warcrafted-controlp
 ```
 
+## Diagnostico de arranque
+
+Si el boton "Iniciar" de una instancia falla, el panel devuelve el error exacto (binario no encontrado, proceso terminado al instante, etc.) tanto en el aviso del dashboard como en el log del servidor. Ademas, cada instancia escribe la salida de su proceso en `data/logs/<id-instancia>.log` (p. ej. `data/logs/instance-1.log`), util para ver por que `worldserver` no arranco.
+
 ## Solucion de problemas
 
 | Sintoma | Posible causa |
 |---|---|
-| Las tarjetas muestran "-" en CPU/RAM | El nombre de proceso en `WORLD_PROCESS` no coincide con el binario real, o el panel no tiene permisos para leer el proceso |
+| Las tarjetas muestran "-" en CPU/RAM | El proceso no esta en ejecucion, o `WORLD_PROCESS`/`WORKDIR` no coinciden con el proceso real |
+| Una instancia aparece como tarjeta roja con un error | `INSTANCE_<N>_TYPE` no se pudo interpretar como `azerothcore` ni `playerbots`; revisa el valor en `.env` |
 | Jugadores online no se actualiza | Credenciales o host de `DB_*` incorrectos, o el usuario MySQL no tiene permisos sobre la base `characters` |
 | La consola GM devuelve error de conexion | El servicio SOAP no esta habilitado, el puerto esta bloqueado por firewall, o `SOAP_USER`/`SOAP_PASS` son incorrectos |
 | "401 No autenticado" al recargar el panel | La sesion expiro (`ACCESS_TOKEN_EXPIRE_MINUTES`) o `SECRET_KEY` cambio; vuelve a iniciar sesion |
