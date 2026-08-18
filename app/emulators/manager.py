@@ -65,6 +65,8 @@ def _load_instance_configs() -> list[InstanceConfig]:
                     db_user=env("DB_USER"),
                     db_pass=env("DB_PASS"),
                     db_characters=env("DB_CHARACTERS"),
+                    acore_logs_dir=env("ACORE_LOGS_DIR"),
+                    log_categories=env("LOG_CATEGORIES"),
                 )
             )
         except ValueError as exc:

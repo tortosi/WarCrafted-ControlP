@@ -55,12 +55,28 @@
   </main>
 
   <div id="log-modal" class="hidden fixed inset-0 z-30 bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 w-full max-w-3xl h-[70vh] flex flex-col">
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 w-full max-w-3xl h-[75vh] flex flex-col">
       <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <h3 id="log-modal-title" class="font-medium text-sm"></h3>
         <button id="log-modal-close" type="button"
                 class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
           <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="shrink-0 flex flex-wrap items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+        <select id="log-modal-select"
+                class="text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-2 py-1.5 flex-1 min-w-[12rem]"></select>
+        <button id="log-modal-live" type="button"
+                class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
+          Ver en vivo
+        </button>
+        <button id="log-modal-copy" type="button"
+                class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
+          Copiar
+        </button>
+        <button id="log-modal-download" type="button"
+                class="text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
+          Descargar
         </button>
       </div>
       <pre id="log-modal-content"

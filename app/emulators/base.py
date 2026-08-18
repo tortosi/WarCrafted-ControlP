@@ -8,13 +8,13 @@ from pathlib import Path
 
 import psutil
 
-from app.config import DATA_DIR
+from app.config import DATA_DIR, get_settings
+from app.emulators import log_manager
 from app.soap.client import SoapClient, SoapError
 
 logger = logging.getLogger(__name__)
 
 PID_DIR = DATA_DIR / "pids"
-LOG_DIR = DATA_DIR / "logs"
 
 
 class ProcessControlError(Exception):
@@ -40,6 +40,8 @@ class InstanceConfig:
     db_user: str
     db_pass: str
     db_characters: str
+    acore_logs_dir: str = ""
+    log_categories: str = ""
 
 
 class BaseEmulatorDriver(ABC):
@@ -47,6 +49,10 @@ class BaseEmulatorDriver(ABC):
 
     def __init__(self, config: InstanceConfig):
         self.config = config
+        settings = get_settings()
+        self._logs_root = Path(settings.instances_logs_dir)
+        self._retention_days = settings.logs_retention_days
+        self._max_runs = settings.logs_max_runs
         self.soap = SoapClient(
             host=config.soap_host,
             port=config.soap_port,
@@ -54,13 +60,38 @@ class BaseEmulatorDriver(ABC):
             password=config.soap_pass,
         )
         PID_DIR.mkdir(parents=True, exist_ok=True)
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        self._log_instance_dir().mkdir(parents=True, exist_ok=True)
 
     def _pid_file(self) -> Path:
         return PID_DIR / f"{self.config.id}.pid"
 
-    def _log_file(self) -> Path:
-        return LOG_DIR / f"{self.config.id}.log"
+    def _log_instance_dir(self) -> Path:
+        return self._logs_root / self.config.id
+
+    def _log_categories(self) -> list[str]:
+        raw = self.config.log_categories.strip()
+        if not raw:
+            return []
+        return [category.strip().lower() for category in raw.split(",") if category.strip()]
+
+    def current_console_log(self) -> Path | None:
+        """Fichero de consola del run activo (el mas reciente), para el streaming en vivo."""
+        for run in log_manager.list_runs(self._log_instance_dir()):
+            if run["category"] == log_manager.CONSOLE_CATEGORY:
+                return self._log_instance_dir() / run["filename"]
+        return None
+
+    def list_log_runs(self) -> list[dict]:
+        return log_manager.list_runs(self._log_instance_dir())
+
+    def read_log_run(self, filename: str) -> str | None:
+        path = log_manager.resolve_safe(self._log_instance_dir(), filename)
+        if path is None or not path.is_file():
+            return None
+        try:
+            return path.read_text(errors="replace")
+        except OSError:
+            return None
 
     def _read_pid(self) -> int | None:
         pid_file = self._pid_file()
@@ -151,16 +182,6 @@ class BaseEmulatorDriver(ABC):
     def execute_soap_command(self, command: str) -> str:
         return self.soap.execute(command)
 
-    def get_recent_log(self, lines: int = 20) -> str:
-        log_path = self._log_file()
-        if not log_path.exists():
-            return ""
-        try:
-            content = log_path.read_text(errors="replace").splitlines()
-        except OSError:
-            return ""
-        return "\n".join(content[-lines:])
-
     def start(self) -> dict:
         existing = self.find_process()
         if existing:
@@ -178,13 +199,23 @@ class BaseEmulatorDriver(ABC):
         except ValueError as exc:
             raise ProcessControlError(f"START_CMD invalido: {exc}") from exc
 
+        instance_dir = self._log_instance_dir()
+        instance_dir.mkdir(parents=True, exist_ok=True)
+
+        categories = self._log_categories()
+        if self.config.acore_logs_dir and categories:
+            log_manager.archive_native_logs(instance_dir, Path(self.config.acore_logs_dir), categories)
+
+        console_log_path = instance_dir / log_manager.run_log_filename(
+            log_manager.CONSOLE_CATEGORY, log_manager.timestamp_now()
+        )
         try:
-            log_fh = self._log_file().open("a", buffering=1)
+            log_fh = console_log_path.open("w", buffering=1)
         except OSError as exc:
             raise ProcessControlError(f"No se pudo abrir el archivo de log: {exc}") from exc
 
         try:
-            log_fh.write(f"\n--- Inicio {self.config.name} ({time.strftime('%Y-%m-%d %H:%M:%S')}) ---\n")
+            log_fh.write(f"--- Inicio {self.config.name} ({time.strftime('%Y-%m-%d %H:%M:%S')}) ---\n")
             process = subprocess.Popen(
                 args,
                 cwd=str(workdir) if workdir else None,
@@ -201,7 +232,7 @@ class BaseEmulatorDriver(ABC):
         time.sleep(0.5)
         return_code = process.poll()
         if return_code is not None:
-            tail = self.get_recent_log()
+            tail = log_manager.tail_file(console_log_path)
             message = f"El proceso finalizo inmediatamente (codigo {return_code})."
             if tail:
                 message += f" Ultimas lineas del log:\n{tail}"
@@ -209,6 +240,7 @@ class BaseEmulatorDriver(ABC):
             raise ProcessControlError(message)
 
         self._write_pid(process.pid)
+        log_manager.purge_old_logs(instance_dir, self._retention_days, self._max_runs)
         logger.info("Instancia '%s' iniciada con PID %s", self.config.name, process.pid)
         return {"success": True, "detail": "Servidor iniciado correctamente.", "pid": process.pid}
 

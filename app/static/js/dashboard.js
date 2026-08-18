@@ -84,7 +84,7 @@ function serverCard(server) {
           </a>
           <button data-action="log" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
                   class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
-            Log
+            Logs
           </button>
         </div>
       </div>
@@ -125,40 +125,143 @@ async function refreshServers() {
 
 const logModal = document.getElementById('log-modal');
 const logModalTitle = document.getElementById('log-modal-title');
+const logModalSelect = document.getElementById('log-modal-select');
+const logModalLiveBtn = document.getElementById('log-modal-live');
+const logModalCopyBtn = document.getElementById('log-modal-copy');
+const logModalDownloadBtn = document.getElementById('log-modal-download');
 const logModalContent = document.getElementById('log-modal-content');
-let logPollTimer = null;
-let logInstanceId = null;
 
-async function refreshLog() {
-  if (!logInstanceId) return;
+const LOG_CATEGORY_LABELS = {
+  worldserver: 'Consola',
+  server: 'Servidor',
+  errors: 'Errores',
+  playerbots: 'Playerbots',
+  gm: 'GM',
+  chat: 'Chat',
+};
+
+let logInstanceId = null;
+let logInstanceName = null;
+let logSocket = null;
+
+function logCategoryLabel(category) {
+  return LOG_CATEGORY_LABELS[category] || category;
+}
+
+function logRunLabel(run) {
+  return `${logCategoryLabel(run.category)} — ${run.started_at.replace('_', ' ')}`;
+}
+
+function appendLogLine(line) {
+  const atBottom = logModalContent.scrollHeight - logModalContent.scrollTop - logModalContent.clientHeight < 40;
+  logModalContent.textContent += (logModalContent.textContent ? '\n' : '') + line;
+  if (atBottom) logModalContent.scrollTop = logModalContent.scrollHeight;
+}
+
+function stopLiveLog() {
+  if (logSocket) {
+    logSocket.close();
+    logSocket = null;
+  }
+  logModalSelect.disabled = false;
+  logModalLiveBtn.textContent = 'Ver en vivo';
+  logModalLiveBtn.classList.remove('bg-brand-600', 'hover:bg-brand-700', 'text-white', 'border-transparent');
+}
+
+function startLiveLog() {
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  logSocket = new WebSocket(`${protocol}://${window.location.host}/ws/servers/${logInstanceId}/logs`);
+  logModalSelect.disabled = true;
+  logModalLiveBtn.textContent = 'Detener vivo';
+  logModalLiveBtn.classList.add('bg-brand-600', 'hover:bg-brand-700', 'text-white', 'border-transparent');
+  logModalContent.textContent = '';
+
+  logSocket.addEventListener('message', (event) => appendLogLine(event.data));
+  logSocket.addEventListener('close', () => stopLiveLog());
+}
+
+async function loadSelectedLog() {
+  if (!logInstanceId || !logModalSelect.value) return;
+  logModalContent.textContent = 'Cargando...';
   try {
-    const response = await fetch(`/api/servers/${logInstanceId}/log?lines=300`);
-    if (!response.ok) return;
+    const response = await fetch(`/api/servers/${logInstanceId}/logs/${encodeURIComponent(logModalSelect.value)}`);
+    if (!response.ok) {
+      logModalContent.textContent = 'No se pudo cargar este archivo de log.';
+      return;
+    }
     const data = await response.json();
-    const atBottom = logModalContent.scrollHeight - logModalContent.scrollTop - logModalContent.clientHeight < 40;
-    logModalContent.textContent = data.content || '(todavia no hay mensajes en el log)';
-    if (atBottom) logModalContent.scrollTop = logModalContent.scrollHeight;
+    logModalContent.textContent = data.content || '(archivo vacio)';
   } catch (err) {
-    // se reintenta en el siguiente ciclo de refresco
+    logModalContent.textContent = 'Error de conexion al cargar el log.';
   }
 }
 
-function openLogModal(id, name) {
+async function openLogModal(id, name) {
   logInstanceId = id;
-  logModalTitle.textContent = `Log — ${name}`;
+  logInstanceName = name;
+  logModalTitle.textContent = `Logs — ${name}`;
   logModalContent.textContent = 'Cargando...';
+  logModalSelect.innerHTML = '';
   logModal.classList.remove('hidden');
-  refreshLog();
-  clearInterval(logPollTimer);
-  logPollTimer = setInterval(refreshLog, 3000);
+
+  try {
+    const response = await fetch(`/api/servers/${id}/logs`);
+    const runs = response.ok ? await response.json() : [];
+    if (!runs.length) {
+      logModalContent.textContent = 'Todavia no hay logs guardados para esta instancia.';
+      return;
+    }
+    logModalSelect.innerHTML = runs
+      .map((run) => `<option value="${escapeHtml(run.filename)}">${escapeHtml(logRunLabel(run))}</option>`)
+      .join('');
+    await loadSelectedLog();
+  } catch (err) {
+    logModalContent.textContent = 'Error de conexion al listar los logs.';
+  }
 }
 
 function closeLogModal() {
+  stopLiveLog();
   logInstanceId = null;
+  logInstanceName = null;
   logModal.classList.add('hidden');
-  clearInterval(logPollTimer);
-  logPollTimer = null;
 }
+
+logModalSelect.addEventListener('change', () => {
+  if (logSocket) stopLiveLog();
+  loadSelectedLog();
+});
+
+logModalLiveBtn.addEventListener('click', () => {
+  if (logSocket) {
+    stopLiveLog();
+    loadSelectedLog();
+  } else {
+    startLiveLog();
+  }
+});
+
+logModalCopyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(logModalContent.textContent);
+    const original = logModalCopyBtn.textContent;
+    logModalCopyBtn.textContent = 'Copiado';
+    setTimeout(() => { logModalCopyBtn.textContent = original; }, 1500);
+  } catch (err) {
+    showFeedback('No se pudo copiar el log al portapapeles.', true);
+  }
+});
+
+logModalDownloadBtn.addEventListener('click', () => {
+  const filename = logModalSelect.value || `${logInstanceName || 'log'}.txt`;
+  const blob = new Blob([logModalContent.textContent], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename.endsWith('.log') ? filename.replace(/\.log$/, '.txt') : `${filename}.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+});
 
 document.getElementById('log-modal-close').addEventListener('click', closeLogModal);
 logModal.addEventListener('click', (event) => {

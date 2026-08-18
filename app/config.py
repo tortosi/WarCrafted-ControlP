@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     github_plugin_repo: str = "tortosi/WarCraftedCP-plugins"
     github_core_repo: str = "tortosi/WarCrafted-ControlP"
 
+    instances_logs_dir: str = "./logs/instances"
+    logs_retention_days: int = 7
+    logs_max_runs: int = 15
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

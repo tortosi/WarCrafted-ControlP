@@ -6,6 +6,24 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.6.0] - 2026-08-19
+
+### Anadido
+- Historico de logs por instancia: cada arranque genera su propio fichero
+  (`GET /api/servers/{id}/logs` los lista, `GET /api/servers/{id}/logs/{filename}`
+  lee uno), con purga automatica configurable (`LOGS_RETENTION_DAYS`,
+  `LOGS_MAX_RUNS`). Si se indica `INSTANCE_<N>_ACORE_LOGS_DIR`, tambien se
+  archivan copias de los logs nativos de AzerothCore de las categorias
+  elegidas en `INSTANCE_<N>_LOG_CATEGORIES` (server, errors, playerbots, gm,
+  chat).
+- Streaming en vivo del log de consola activo por WebSocket
+  (`/ws/servers/{id}/logs`).
+
+### Cambiado
+- El boton **Log** del dashboard pasa a llamarse **Logs** y abre un modal con
+  selector de historico, copiar, descargar y "ver en vivo", sustituyendo el
+  visor simple de la version anterior.
+
 ## [0.5.0] - 2026-08-19
 
 ### Anadido

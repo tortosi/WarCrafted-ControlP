@@ -46,7 +46,14 @@ class ServerSummary(BaseModel):
     error: str | None = None
 
 
-class LogTail(BaseModel):
+class LogRun(BaseModel):
+    filename: str
+    category: str
+    started_at: str
+    size_bytes: int
+
+
+class LogContent(BaseModel):
     content: str
 
 

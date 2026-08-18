@@ -42,7 +42,31 @@ Cada tarjeta incluye cuatro acciones:
 | **Iniciar** | Lanza el proceso `worldserver` usando el comando configurado en `INSTANCE_<N>_START_CMD`. Aparece sombreado y deshabilitado mientras la instancia ya esta en ejecucion. |
 | **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. Aparece sombreado y deshabilitado mientras la instancia esta detenida. |
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
-| **Log** | Abre una ventana con la salida de consola del proceso (stdout/stderr) guardada en `data/logs/<instancia>.log`, incluyendo lo que imprime al arrancar. Se actualiza sola cada 3 segundos mientras la ventana esta abierta. |
+| **Logs** | Abre el historico de logs de esa instancia (ver siguiente seccion). |
+
+### Historico de logs y "ver en vivo"
+
+Cada vez que arrancas una instancia, el panel guarda la salida de consola
+(stdout/stderr) del proceso en un fichero nuevo — no un unico log que crece
+sin fin, sino uno por arranque, para poder comparar sesiones distintas.
+Si ademas configuraste `INSTANCE_<N>_ACORE_LOGS_DIR` y
+`INSTANCE_<N>_LOG_CATEGORIES` en el `.env` (ver `.env.example`), el panel
+tambien guarda una copia de los logs nativos de AzerothCore de esas
+categorias (`server`, `errors`, `playerbots`, `gm`, `chat`) del arranque
+anterior, tomada justo antes de lanzar el proceso nuevo.
+
+El boton **Logs** de cada tarjeta abre una ventana con:
+
+- Un desplegable con todos los arranques guardados (mas reciente primero,
+  identificados por categoria y fecha).
+- **Ver en vivo**: sigue en tiempo real el log de consola del arranque
+  activo, mientras la instancia sigue en ejecucion.
+- **Copiar**: copia el contenido mostrado al portapapeles.
+- **Descargar**: guarda el contenido mostrado como fichero `.txt`.
+
+Por defecto se conservan como maximo 15 arranques por categoria, y se
+purgan los que superen 7 dias — ajustable con `LOGS_RETENTION_DAYS` y
+`LOGS_MAX_RUNS` en el `.env`.
 
 ## Menu de plugins
 
