@@ -160,7 +160,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/ruta/a/WarCrafted-ControlP
 ExecStart=/ruta/a/WarCrafted-ControlP/run.sh
-Restart=on-failure
+Restart=always
 User=www-data
 
 [Install]
@@ -171,6 +171,18 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 sudo systemctl enable --now warcrafted-controlp
 ```
+
+`Restart=always` (no `on-failure`) es importante: la autoactualizacion del panel (ver mas abajo) reinicia el proceso a proposito para aplicar cambios, y necesita que systemd lo vuelva a levantar siempre, no solo cuando detecta un fallo.
+
+## Autoactualizacion del panel
+
+Con el token de GitHub configurado (ver "Instalacion de plugins" arriba; el mismo token sirve para ambos repos si le das acceso a los dos), entra en **Tienda** como administrador. Arriba del catalogo aparece la tarjeta **Panel principal** con la version instalada y, si hay una distinta en `WarCrafted-ControlP`, un boton **Actualizar**:
+
+1. Descarga el repo, fusiona los archivos sobre la instalacion activa (nunca toca `.env`, `data/` ni los plugins ya instalados, porque no forman parte de ese repo) y, si `requirements.txt` cambio, reinstala dependencias en el mismo venv automaticamente.
+2. Si la instalacion de dependencias falla, la actualizacion se detiene ahi y el aviso lo dice explicitamente: no reinicies hasta arreglarlo a mano (`pip install -r requirements.txt`), o el panel arrancaria con codigo nuevo y dependencias viejas.
+3. Si todo fue bien, aparece un boton **Reiniciar panel**. Al pulsarlo el proceso se cierra a proposito; systemd (con `Restart=always`, como arriba) lo vuelve a levantar en segundos ya con el codigo nuevo. Sin un supervisor asi, el panel se queda caido hasta que lo arranques a mano con `./run.sh`.
+
+Sin servicio systemd (ejecucion manual con `./run.sh`), usa este sistema solo para descargar+instalar y reinicia tu mismo el proceso cuando te convenga.
 
 ## Diagnostico de arranque
 

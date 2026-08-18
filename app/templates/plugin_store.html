@@ -14,6 +14,7 @@
         <h1 class="text-lg font-semibold">Tienda de Plugins</h1>
       </div>
       <div class="flex items-center gap-3">
+        <span id="updates-status" class="hidden text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200"></span>
         <span id="token-status" class="hidden text-xs px-2.5 py-1 rounded-full"></span>
         <button id="token-btn" type="button"
                 class="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-900">
@@ -25,6 +26,17 @@
 
   <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
     <div id="action-feedback" class="hidden text-sm rounded-lg px-4 py-3 whitespace-pre-wrap"></div>
+
+    <div id="panel-update-card" class="hidden bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 class="font-medium">Panel principal</h3>
+          <p id="panel-version-text" class="text-xs text-gray-400"></p>
+        </div>
+        <div class="flex items-center gap-2" id="panel-update-action"></div>
+      </div>
+      <pre id="panel-update-log" class="hidden bg-gray-950 text-gray-100 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap max-h-48 overflow-y-auto"></pre>
+    </div>
 
     <div id="empty-state" class="hidden bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-8 text-center space-y-3">
       <i class="fa-solid fa-lock text-3xl text-gray-300 dark:text-gray-700"></i>
@@ -45,10 +57,10 @@
   <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6 space-y-4">
     <h2 class="text-base font-semibold">Conectar con GitHub</h2>
     <div class="text-sm text-gray-500 dark:text-gray-400 space-y-2">
-      <p>Crea un <em>Personal Access Token</em> (fine-grained) con acceso de solo lectura al repositorio de plugins:</p>
+      <p>Crea un <em>Personal Access Token</em> (fine-grained) con acceso de solo lectura a los dos repositorios:</p>
       <ol class="list-decimal list-inside space-y-1">
         <li>GitHub &rarr; Settings &rarr; Developer settings &rarr; Fine-grained tokens &rarr; Generate new token.</li>
-        <li>En "Repository access", selecciona <strong>WarCraftedCP-plugins</strong>.</li>
+        <li>En "Repository access", selecciona <strong>WarCraftedCP-plugins</strong> y <strong>WarCrafted-ControlP</strong> (este ultimo solo hace falta si quieres actualizar el panel desde aqui).</li>
         <li>En "Permissions", concede <strong>Contents: Read-only</strong>.</li>
         <li>Copia el token generado y pegalo aqui abajo.</li>
       </ol>

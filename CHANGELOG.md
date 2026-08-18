@@ -6,10 +6,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.3.0] - 2026-08-18
+
 ### Anadido
 - Menu desplegable "Plugins" en la barra superior del panel: consume `GET /api/v1/plugins/` y enlaza los modulos que declaren `ui.has_ui: true` en su `manifest.json` (titulo, ruta e icono definidos por cada plugin).
 - El loader de plugins expone metadatos de interfaz (`ui.has_ui`, `ui.title`, `ui.route`, `ui.icon`) y el core los publica mediante `app/api/plugins.py`.
-- Tienda de Plugins (`/plugins/store`): conecta un Personal Access Token de GitHub (`POST /api/v1/plugins/setup-token`, guardado en `GITHUB_PLUGIN_TOKEN` dentro de `.env`), lista el catalogo del repo `WarCraftedCP-plugins` (`GET /api/v1/plugins/catalog`) marcando que modulos ya estan instalados, e instala uno con un clic (`POST /api/v1/plugins/install/{nombre}`): descarga el tarball del repo, extrae solo esa carpeta en `app/plugins/<nombre>/` y lo monta en caliente sin reiniciar el panel. Requiere permisos de administrador.
+- Tienda de Plugins (`/plugins/store`): conecta un Personal Access Token de GitHub (`POST /api/v1/plugins/setup-token`, guardado en `GITHUB_PLUGIN_TOKEN` dentro de `.env`), lista el catalogo del repo `WarCraftedCP-plugins` (`GET /api/v1/plugins/catalog`) marcando que modulos ya estan instalados y si hay version nueva, instala uno con un clic (`POST /api/v1/plugins/install/{nombre}`) y lo actualiza (`POST /api/v1/plugins/update/{nombre}`) fusionando la version nueva sobre la carpeta existente sin borrar datos que el plugin haya generado (backups, etc.). Todo se monta o remonta en caliente, sin reiniciar el panel. Requiere permisos de administrador.
+- Autoactualizacion del propio panel (`GET /api/system/update-check`, `POST /api/system/update`, `POST /api/system/restart`): compara el archivo `VERSION` local contra el del repo `WarCrafted-ControlP` en GitHub, descarga y fusiona la version nueva sin tocar `.env`, `data/` ni los plugins instalados, reinstala `requirements.txt` en el mismo venv si cambio, y permite reiniciar el proceso para aplicar los cambios (requiere un supervisor externo como systemd `Restart=always` para volver a levantarse).
 
 ## [0.2.0] - 2026-08-18
 

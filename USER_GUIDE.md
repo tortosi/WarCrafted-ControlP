@@ -51,11 +51,14 @@ Junto al nombre de usuario, el boton **Plugins** despliega un menu con los modul
 
 El boton **Tienda** (junto al menu de Plugins) abre el catalogo de modulos disponibles en el repositorio `WarCraftedCP-plugins`, para instalarlos sin tocar la linea de comandos.
 
-- **Sin token de GitHub**: la tienda muestra un aviso para conectar uno. Pulsa **Configurar token de GitHub**, sigue las instrucciones del modal para crear un *Personal Access Token* (fine-grained) con permiso **Contents: Read-only** sobre ese repositorio, y pegalo. Se verifica contra GitHub y se guarda; nunca se muestra de nuevo una vez guardado.
-- **Con token**: aparece una cuadricula con cada modulo (nombre, version, descripcion) y un boton **Instalar**, o la etiqueta **Instalado** si ya esta presente en `app/plugins/`.
-- Al instalar, el modulo se descarga y se monta de inmediato — no hace falta reiniciar el panel. Aparece un enlace **Abrir** si el modulo tiene interfaz propia, y la proxima vez que cargues el menu **Plugins** ya lo veras ahi.
+- **Sin token de GitHub**: la tienda muestra un aviso para conectar uno. Pulsa **Configurar token de GitHub**, sigue las instrucciones del modal para crear un *Personal Access Token* (fine-grained) con permiso **Contents: Read-only** sobre ese repositorio (y sobre `WarCrafted-ControlP` tambien, si quieres poder actualizar el panel desde aqui), y pegalo. Se verifica contra GitHub y se guarda; nunca se muestra de nuevo una vez guardado.
+- **Con token**: aparece una cuadricula con cada modulo (nombre, version, descripcion) y un boton **Instalar**, o su estado si ya esta presente en `app/plugins/`: **Instalado · actualizado** si coincide con la version del repo, o **v actual instalada** + boton **Actualizar** si hay una version distinta.
+- Al instalar o actualizar, el modulo se descarga y se monta (o remonta) de inmediato — no hace falta reiniciar el panel. Aparece un enlace **Abrir** si el modulo tiene interfaz propia, y la proxima vez que cargues el menu **Plugins** ya lo veras ahi. Si el dashboard principal muestra un punto rojo sobre el boton **Tienda**, hay actualizaciones de plugins pendientes.
+- Actualizar nunca borra datos que el propio modulo haya generado (como los backups de personajes del plugin `migration`): solo sobrescribe los archivos que vienen en la version nueva.
 
-Solo un administrador puede configurar el token o instalar modulos.
+Arriba del catalogo, la tarjeta **Panel principal** hace lo mismo para el propio panel — ver "Autoactualizacion del panel" en `INSTALL.md` para el detalle (incluye reiniciar el proceso para aplicar cambios).
+
+Solo un administrador puede configurar el token, instalar/actualizar modulos, o actualizar/reiniciar el panel.
 
 ## Consola GM
 

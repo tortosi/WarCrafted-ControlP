@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     github_plugin_token: str = ""
     github_plugin_repo: str = "tortosi/WarCraftedCP-plugins"
+    github_core_repo: str = "tortosi/WarCrafted-ControlP"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

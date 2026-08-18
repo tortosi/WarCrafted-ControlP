@@ -2,9 +2,14 @@ const feedbackEl = document.getElementById('action-feedback');
 const emptyStateEl = document.getElementById('empty-state');
 const gridEl = document.getElementById('catalog-grid');
 const tokenStatusEl = document.getElementById('token-status');
+const updatesStatusEl = document.getElementById('updates-status');
 const tokenModal = document.getElementById('token-modal');
 const tokenInput = document.getElementById('token-input');
 const tokenModalError = document.getElementById('token-modal-error');
+const panelUpdateCard = document.getElementById('panel-update-card');
+const panelVersionText = document.getElementById('panel-version-text');
+const panelUpdateAction = document.getElementById('panel-update-action');
+const panelUpdateLog = document.getElementById('panel-update-log');
 let feedbackTimeout = null;
 
 function escapeHtml(text) {
@@ -33,14 +38,27 @@ function closeTokenModal() {
   tokenModal.classList.add('hidden');
 }
 
-function pluginCard(plugin) {
-  const actionHtml = plugin.installed
-    ? '<span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">Instalado</span>'
-    : `<button data-action="install" data-slug="${escapeHtml(plugin.slug)}"
+function actionHtmlFor(plugin) {
+  if (!plugin.installed) {
+    return `<button data-action="install" data-slug="${escapeHtml(plugin.slug)}"
                class="text-xs px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white">
          Instalar
        </button>`;
+  }
+  if (plugin.update_available) {
+    return `
+      <span class="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+        v${escapeHtml(plugin.installed_version)} instalada
+      </span>
+      <button data-action="update" data-slug="${escapeHtml(plugin.slug)}"
+              class="text-xs px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white">
+        Actualizar a v${escapeHtml(plugin.version)}
+      </button>`;
+  }
+  return '<span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">Instalado &middot; actualizado</span>';
+}
 
+function pluginCard(plugin) {
   return `
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-3" data-card="${escapeHtml(plugin.slug)}">
       <div class="flex items-start justify-between gap-2">
@@ -50,8 +68,8 @@ function pluginCard(plugin) {
         </div>
       </div>
       <p class="text-sm text-gray-500 dark:text-gray-400 flex-1">${escapeHtml(plugin.description) || 'Sin descripcion.'}</p>
-      <div class="flex items-center justify-between" data-slot="action">
-        ${actionHtml}
+      <div class="flex items-center gap-2 flex-wrap" data-slot="action">
+        ${actionHtmlFor(plugin)}
       </div>
     </div>`;
 }
@@ -89,46 +107,160 @@ async function loadCatalog() {
     gridEl.innerHTML = data.plugins.length
       ? data.plugins.map(pluginCard).join('')
       : '<p class="text-sm text-gray-500 dark:text-gray-400 col-span-full">No hay plugins publicados en el repositorio.</p>';
+
+    const updatable = data.plugins.filter((p) => p.update_available);
+    if (updatable.length) {
+      updatesStatusEl.textContent = `${updatable.length} actualizacion(es) disponible(s)`;
+      updatesStatusEl.classList.remove('hidden');
+    } else {
+      updatesStatusEl.classList.add('hidden');
+    }
   } catch (err) {
     showFeedback('Error de conexion al cargar el catalogo.', true);
   }
 }
 
-async function installPlugin(slug, button) {
+function renderPanelUpToDate(installedVersion) {
+  panelVersionText.textContent = `Version instalada: v${installedVersion}`;
+  panelUpdateAction.innerHTML = '<span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">Actualizado</span>';
+}
+
+function renderPanelUpdateButton(installedVersion, remoteVersion) {
+  panelVersionText.textContent = `Version instalada: v${installedVersion} · disponible: v${remoteVersion}`;
+  panelUpdateAction.innerHTML = `
+    <button id="panel-update-btn" type="button"
+            class="text-xs px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white">
+      Actualizar a v${escapeHtml(remoteVersion)}
+    </button>`;
+  document.getElementById('panel-update-btn').addEventListener('click', updatePanel);
+}
+
+function renderPanelRestartButton(newVersion) {
+  panelVersionText.textContent = `Version instalada: v${newVersion} (pendiente de reiniciar)`;
+  panelUpdateAction.innerHTML = `
+    <button id="panel-restart-btn" type="button"
+            class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white">
+      Reiniciar panel
+    </button>`;
+  document.getElementById('panel-restart-btn').addEventListener('click', restartPanel);
+}
+
+async function loadPanelStatus() {
+  try {
+    const response = await fetch('/api/system/update-check');
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data.configured) return;
+
+    panelUpdateCard.classList.remove('hidden');
+    if (data.update_available) {
+      renderPanelUpdateButton(data.installed_version, data.remote_version);
+    } else {
+      renderPanelUpToDate(data.installed_version);
+    }
+  } catch (err) {
+    // el estado del panel no bloquea el resto de la tienda; se ignora en silencio
+  }
+}
+
+async function updatePanel() {
+  const button = document.getElementById('panel-update-btn');
+  button.disabled = true;
+  button.textContent = 'Actualizando...';
+  panelUpdateLog.classList.remove('hidden');
+  panelUpdateLog.textContent = 'Descargando y aplicando la actualizacion...';
+
+  try {
+    const response = await fetch('/api/system/update', { method: 'POST' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      panelUpdateLog.textContent = data.detail || 'Error desconocido al actualizar el panel.';
+      showFeedback('No se pudo actualizar el panel.', true);
+      await loadPanelStatus();
+      return;
+    }
+
+    let log = `Actualizado de v${data.old_version} a v${data.new_version}.`;
+    if (data.requirements_changed) {
+      log += `\nrequirements.txt cambio: se reinstalaron dependencias.\n\n${data.pip_output}`;
+    } else {
+      log += '\nSin cambios en requirements.txt.';
+    }
+    panelUpdateLog.textContent = log;
+    showFeedback(`Panel actualizado a v${data.new_version}. Reinicia para aplicar los cambios.`, false);
+    renderPanelRestartButton(data.new_version);
+  } catch (err) {
+    panelUpdateLog.textContent = 'Error de conexion al actualizar el panel.';
+    showFeedback('Error de conexion al actualizar el panel.', true);
+    await loadPanelStatus();
+  }
+}
+
+async function restartPanel() {
+  if (!window.confirm(
+    'El panel se reiniciara ahora mismo. Si no corre bajo un supervisor que lo levante '
+    + 'solo (systemd con Restart=always, por ejemplo), quedara caido hasta que lo arranques a mano. ¿Continuar?'
+  )) {
+    return;
+  }
+
+  const button = document.getElementById('panel-restart-btn');
+  button.disabled = true;
+  button.textContent = 'Reiniciando...';
+
+  try {
+    await fetch('/api/system/restart', { method: 'POST' });
+  } catch (err) {
+    // se espera que la conexion se corte cuando el proceso se reinicia
+  }
+  panelUpdateLog.textContent += '\n\nReiniciando... recarga esta pagina en unos segundos.';
+}
+
+const ACTION_LABELS = {
+  install: { verb: 'instalar', progress: 'Instalando...', done: 'instalado' },
+  update: { verb: 'actualizar', progress: 'Actualizando...', done: 'actualizado' },
+};
+
+async function runPluginAction(action, slug, button) {
+  if (action === 'update' && !window.confirm(`¿Actualizar "${slug}" a la ultima version? Sus rutas se recargan al momento.`)) {
+    return;
+  }
+
+  const labels = ACTION_LABELS[action];
   const card = gridEl.querySelector(`[data-card="${CSS.escape(slug)}"]`);
   const actionSlot = card ? card.querySelector('[data-slot="action"]') : null;
   const originalHtml = actionSlot ? actionSlot.innerHTML : '';
   button.disabled = true;
-  button.textContent = 'Instalando...';
+  button.textContent = labels.progress;
 
   try {
-    const response = await fetch(`/api/v1/plugins/install/${encodeURIComponent(slug)}`, { method: 'POST' });
+    const response = await fetch(`/api/v1/plugins/${action}/${encodeURIComponent(slug)}`, { method: 'POST' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      showFeedback(`No se pudo instalar "${slug}": ${data.detail || 'error desconocido'}`, true);
+      showFeedback(`No se pudo ${labels.verb} "${slug}": ${data.detail || 'error desconocido'}`, true);
       if (actionSlot) actionSlot.innerHTML = originalHtml;
       return;
     }
 
-    showFeedback(`Plugin "${data.plugin.name}" instalado correctamente.`, false);
+    showFeedback(`Plugin "${data.plugin.name}" ${labels.done} correctamente (v${data.plugin.version}).`, false);
     if (actionSlot) {
       const openLink = data.plugin.has_ui && data.plugin.route
         ? `<a href="${escapeHtml(data.plugin.route)}" class="text-xs text-brand-600 hover:underline">Abrir</a>`
         : '';
       actionSlot.innerHTML = `
-        <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">Instalado</span>
+        <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">Instalado &middot; actualizado</span>
         ${openLink}`;
     }
   } catch (err) {
-    showFeedback(`Error de conexion al instalar "${slug}".`, true);
+    showFeedback(`Error de conexion al ${labels.verb} "${slug}".`, true);
     if (actionSlot) actionSlot.innerHTML = originalHtml;
   }
 }
 
 gridEl.addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-action="install"]');
+  const button = event.target.closest('button[data-action="install"], button[data-action="update"]');
   if (!button) return;
-  installPlugin(button.dataset.slug, button);
+  runPluginAction(button.dataset.action, button.dataset.slug, button);
 });
 
 document.getElementById('token-btn').addEventListener('click', openTokenModal);
@@ -165,7 +297,7 @@ document.getElementById('token-modal-save').addEventListener('click', async () =
     }
     closeTokenModal();
     showFeedback('Token de GitHub guardado correctamente.', false);
-    await loadCatalog();
+    await Promise.all([loadCatalog(), loadPanelStatus()]);
   } catch (err) {
     tokenModalError.textContent = 'Error de conexion al guardar el token.';
     tokenModalError.classList.remove('hidden');
@@ -176,3 +308,4 @@ document.getElementById('token-modal-save').addEventListener('click', async () =
 });
 
 loadCatalog();
+loadPanelStatus();
