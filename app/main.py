@@ -6,6 +6,7 @@ import logging
 from contextlib import asynccontextmanager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -18,6 +19,7 @@ from app.api import auth, console, servers, system
 from app.config import BASE_DIR, get_settings
 from app.database import init_db
 from app.deps import get_db
+from app.plugins.loader import load_plugins
 from app.security import decode_access_token
 
 settings = get_settings()
@@ -38,6 +40,12 @@ app.include_router(auth.router)
 app.include_router(servers.router)
 app.include_router(system.router)
 app.include_router(console.router)
+
+for plugin_name, router, metadata in load_plugins():
+    prefix = f"/api/v1/plugins/{plugin_name}"
+    app.include_router(router, prefix=prefix, tags=[f"plugin: {metadata.name}"])
+    if metadata.description:
+        logger.info(f"Plugin: {metadata.description}")
 
 
 def _current_user_or_none(request: Request, db: Session) -> models.User | None:
