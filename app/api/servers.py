@@ -91,6 +91,17 @@ def stop_server(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
+@router.get("/{instance_id}/log", response_model=schemas.LogTail)
+def get_server_log(
+    instance_id: str,
+    lines: int = 300,
+    current_user: models.User = Depends(get_current_user),
+    manager: EmulatorManager = Depends(get_manager),
+):
+    driver = _get_driver_or_404(instance_id, manager)
+    return schemas.LogTail(content=driver.get_recent_log(max(1, min(lines, 2000))))
+
+
 @router.post("/{instance_id}/command", response_model=schemas.CommandResult)
 def run_command(
     instance_id: str,

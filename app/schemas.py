@@ -46,6 +46,10 @@ class ServerSummary(BaseModel):
     error: str | None = None
 
 
+class LogTail(BaseModel):
+    content: str
+
+
 class SystemStats(BaseModel):
     cpu_percent: float
     memory_percent: float

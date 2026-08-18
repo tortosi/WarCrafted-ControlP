@@ -151,7 +151,7 @@ class BaseEmulatorDriver(ABC):
     def execute_soap_command(self, command: str) -> str:
         return self.soap.execute(command)
 
-    def _tail_log(self, lines: int = 20) -> str:
+    def get_recent_log(self, lines: int = 20) -> str:
         log_path = self._log_file()
         if not log_path.exists():
             return ""
@@ -201,7 +201,7 @@ class BaseEmulatorDriver(ABC):
         time.sleep(0.5)
         return_code = process.poll()
         if return_code is not None:
-            tail = self._tail_log()
+            tail = self.get_recent_log()
             message = f"El proceso finalizo inmediatamente (codigo {return_code})."
             if tail:
                 message += f" Ultimas lineas del log:\n{tail}"

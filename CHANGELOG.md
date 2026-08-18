@@ -6,6 +6,12 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+### Anadido
+- Boton **Log** en cada tarjeta de instancia (`GET /api/servers/{id}/log`): muestra en una ventana lo que el proceso `worldserver` escribe por stdout/stderr, desde el arranque, guardado en `data/logs/<instancia>.log`. Se actualiza sola cada 3 segundos mientras esta abierta.
+
+### Cambiado
+- Los botones **Iniciar** y **Detener** del dashboard se deshabilitan (sombreados) segun el estado real de la instancia, para no poder iniciar dos veces un servidor ya en marcha ni detener uno que ya esta parado.
+
 ## [0.4.1] - 2026-08-18
 
 ### Corregido

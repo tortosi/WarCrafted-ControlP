@@ -35,13 +35,14 @@ Cada instancia configurada en `.env` aparece como una tarjeta con:
 
 Si una instancia tiene una configuracion invalida (por ejemplo `INSTANCE_<N>_TYPE` no reconocible), aparece igualmente en el dashboard como una tarjeta roja con el motivo del error, en vez de desaparecer sin explicacion.
 
-Cada tarjeta incluye tres acciones:
+Cada tarjeta incluye cuatro acciones:
 
 | Boton | Accion |
 |---|---|
-| **Iniciar** | Lanza el proceso `worldserver` usando el comando configurado en `INSTANCE_<N>_START_CMD`. No hace nada si ya esta en ejecucion. |
-| **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. |
+| **Iniciar** | Lanza el proceso `worldserver` usando el comando configurado en `INSTANCE_<N>_START_CMD`. Aparece sombreado y deshabilitado mientras la instancia ya esta en ejecucion. |
+| **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. Aparece sombreado y deshabilitado mientras la instancia esta detenida. |
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
+| **Log** | Abre una ventana con la salida de consola del proceso (stdout/stderr) guardada en `data/logs/<instancia>.log`, incluyendo lo que imprime al arrancar. Se actualiza sola cada 3 segundos mientras la ventana esta abierta. |
 
 ## Menu de plugins
 

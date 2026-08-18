@@ -64,19 +64,29 @@ function serverCard(server) {
           <p class="font-medium">${server.players_online != null ? server.players_online : '-'}</p>
         </div>
       </div>
-      <div class="flex gap-2 mt-1">
-        <button data-action="start" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
-          Iniciar
-        </button>
-        <button data-action="stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
-          Detener
-        </button>
-        <a href="/console/${server.id}"
-           class="flex-1 text-xs py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-center">
-          Consola
-        </a>
+      <div class="flex flex-col gap-2 mt-1">
+        <div class="flex gap-2">
+          <button data-action="start" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
+                  ${server.online ? 'disabled' : ''}
+                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.online ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+            Iniciar
+          </button>
+          <button data-action="stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
+                  ${server.online ? '' : 'disabled'}
+                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.online ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : 'opacity-50 cursor-not-allowed'}">
+            Detener
+          </button>
+        </div>
+        <div class="flex gap-2">
+          <a href="/console/${server.id}"
+             class="flex-1 text-xs py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-center">
+            Consola
+          </a>
+          <button data-action="log" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
+                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800">
+            Log
+          </button>
+        </div>
       </div>
     </div>`;
 }
@@ -113,10 +123,56 @@ async function refreshServers() {
   }
 }
 
+const logModal = document.getElementById('log-modal');
+const logModalTitle = document.getElementById('log-modal-title');
+const logModalContent = document.getElementById('log-modal-content');
+let logPollTimer = null;
+let logInstanceId = null;
+
+async function refreshLog() {
+  if (!logInstanceId) return;
+  try {
+    const response = await fetch(`/api/servers/${logInstanceId}/log?lines=300`);
+    if (!response.ok) return;
+    const data = await response.json();
+    const atBottom = logModalContent.scrollHeight - logModalContent.scrollTop - logModalContent.clientHeight < 40;
+    logModalContent.textContent = data.content || '(todavia no hay mensajes en el log)';
+    if (atBottom) logModalContent.scrollTop = logModalContent.scrollHeight;
+  } catch (err) {
+    // se reintenta en el siguiente ciclo de refresco
+  }
+}
+
+function openLogModal(id, name) {
+  logInstanceId = id;
+  logModalTitle.textContent = `Log — ${name}`;
+  logModalContent.textContent = 'Cargando...';
+  logModal.classList.remove('hidden');
+  refreshLog();
+  clearInterval(logPollTimer);
+  logPollTimer = setInterval(refreshLog, 3000);
+}
+
+function closeLogModal() {
+  logInstanceId = null;
+  logModal.classList.add('hidden');
+  clearInterval(logPollTimer);
+  logPollTimer = null;
+}
+
+document.getElementById('log-modal-close').addEventListener('click', closeLogModal);
+logModal.addEventListener('click', (event) => {
+  if (event.target === logModal) closeLogModal();
+});
+
 gridEl.addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
   const { action, id, name } = button.dataset;
+  if (action === 'log') {
+    openLogModal(id, name);
+    return;
+  }
   const actionLabel = action === 'start' ? 'iniciar' : 'detener';
   button.disabled = true;
   try {
