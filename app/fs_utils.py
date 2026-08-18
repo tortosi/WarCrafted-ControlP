@@ -1,4 +1,5 @@
 import io
+import os
 import shutil
 import tarfile
 from pathlib import Path
@@ -41,6 +42,9 @@ def extract_tarball(tarball: bytes, dest_dir: Path, subpath: str | None = None) 
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
                 with tar.extractfile(member) as src, open(dest_path, "wb") as dst:
                     shutil.copyfileobj(src, dst)
+                # open(..., "wb") crea el archivo con permisos por defecto (sin +x);
+                # sin esto, scripts como run.sh pierden el bit de ejecucion al extraerlos.
+                os.chmod(dest_path, member.mode & 0o777)
 
     return found
 

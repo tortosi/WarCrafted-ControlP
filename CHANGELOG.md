@@ -6,8 +6,11 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.4.1] - 2026-08-18
+
 ### Corregido
 - El aviso de actualizaciones del dashboard principal solo miraba los plugins; ahora tambien consulta `GET /api/system/update-check`, asi que un punto rojo sobre "Tienda" avisa igual si lo que cambio es el propio panel.
+- `extract_tarball` no preservaba los permisos de los archivos del repo: `run.sh` e `install.sh` perdian el bit `+x` al instalar o actualizar el panel. Si ya te paso, ejecuta `chmod +x run.sh install.sh` a mano una vez; las proximas actualizaciones ya lo mantienen.
 
 ## [0.4.0] - 2026-08-18
 
