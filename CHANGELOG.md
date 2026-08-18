@@ -6,6 +6,9 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+### Corregido
+- El aviso de actualizaciones del dashboard principal solo miraba los plugins; ahora tambien consulta `GET /api/system/update-check`, asi que un punto rojo sobre "Tienda" avisa igual si lo que cambio es el propio panel.
+
 ## [0.4.0] - 2026-08-18
 
 ### Anadido

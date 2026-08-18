@@ -175,26 +175,50 @@ pluginsMenuBtn.addEventListener('click', (event) => {
 });
 document.addEventListener('click', () => pluginsMenu.classList.add('hidden'));
 
-async function checkPluginUpdates() {
+async function checkUpdates() {
   const badge = document.getElementById('store-update-badge');
+  let count = 0;
+  const parts = [];
+
   try {
     const response = await fetch('/api/v1/plugins/catalog');
-    if (!response.ok) return;
-    const data = await response.json();
-    if (!data.configured) return;
-    const updates = data.plugins.filter((plugin) => plugin.update_available);
-    if (updates.length) {
-      badge.textContent = updates.length;
-      badge.classList.remove('hidden');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.configured) {
+        const updates = data.plugins.filter((plugin) => plugin.update_available);
+        if (updates.length) {
+          count += updates.length;
+          parts.push(`${updates.length} plugin(s)`);
+        }
+      }
     }
   } catch (err) {
     // la tienda no es critica para el dashboard; se ignora en silencio
+  }
+
+  try {
+    const response = await fetch('/api/system/update-check');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.configured && data.update_available) {
+        count += 1;
+        parts.push('el panel principal');
+      }
+    }
+  } catch (err) {
+    // idem
+  }
+
+  if (count) {
+    badge.textContent = count;
+    badge.title = `Hay actualizaciones disponibles: ${parts.join(' y ')}`;
+    badge.classList.remove('hidden');
   }
 }
 
 refreshStats();
 refreshServers();
 loadPluginsMenu();
-checkPluginUpdates();
+checkUpdates();
 setInterval(refreshStats, 5000);
 setInterval(refreshServers, 5000);
