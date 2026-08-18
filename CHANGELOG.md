@@ -6,6 +6,8 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.5.0] - 2026-08-19
+
 ### Anadido
 - Boton **Log** en cada tarjeta de instancia (`GET /api/servers/{id}/log`): muestra en una ventana lo que el proceso `worldserver` escribe por stdout/stderr, desde el arranque, guardado en `data/logs/<instancia>.log`. Se actualiza sola cada 3 segundos mientras esta abierta.
 
