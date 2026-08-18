@@ -117,6 +117,32 @@ run.bat           # Windows
 
 Ambos scripts activan el entorno virtual, cargan `.env` y arrancan Uvicorn en el host/puerto configurados.
 
+## Instalacion de plugins
+
+Los modulos (plugins) se desarrollan en el repositorio independiente `WarCraftedCP-plugins`. El panel los descubre automaticamente si sus carpetas quedan como hijas directas de `app/plugins/`.
+
+```bash
+# Desde la raiz de WarCrafted-ControlP
+rm -rf app/plugins/migration app/plugins/<otro-modulo>   # si ya existian versiones previas
+git clone <url-de-WarCraftedCP-plugins> /tmp/warcraftedcp-plugins
+cp -r /tmp/warcraftedcp-plugins/<nombre-modulo> app/plugins/
+```
+
+O bien, para tener el monorepo entero sincronizado por git dentro de `app/plugins/`:
+
+```bash
+git clone <url-de-WarCraftedCP-plugins> app/plugins
+```
+
+Cada modulo puede traer su propio `requirements.txt` con dependencias de terceros. Instalalas en el mismo entorno virtual del panel antes de arrancar, o el modulo se omite en silencio:
+
+```bash
+source .venv/bin/activate
+pip install -r app/plugins/<nombre-modulo>/requirements.txt
+```
+
+Reinicia el panel (`./run.sh` / `run.bat`, o `systemctl restart warcrafted-controlp` si corre como servicio) para que `app/plugins/loader.py` los detecte; la carga solo ocurre al arrancar. Cada modulo queda montado en `/api/v1/plugins/<nombre-de-carpeta>`. Revisa el log de arranque para confirmar `Plugin '<nombre>' vX.X.X cargado desde <carpeta>`; si un modulo no aparece, falta `router.py` (o no exporta un `APIRouter` valido) o hay un `ImportError` por dependencias sin instalar.
+
 ## Ejecucion como servicio (opcional, Linux con systemd)
 
 Crea `/etc/systemd/system/warcrafted-controlp.service`:
