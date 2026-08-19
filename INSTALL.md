@@ -180,9 +180,9 @@ Con el token de GitHub configurado (ver "Instalacion de plugins" arriba; el mism
 
 1. Descarga el repo, fusiona los archivos sobre la instalacion activa (nunca toca `.env`, `data/` ni los plugins ya instalados, porque no forman parte de ese repo) y, si `requirements.txt` cambio, reinstala dependencias en el mismo venv automaticamente.
 2. Si la instalacion de dependencias falla, la actualizacion se detiene ahi y el aviso lo dice explicitamente: no reinicies hasta arreglarlo a mano (`pip install -r requirements.txt`), o el panel arrancaria con codigo nuevo y dependencias viejas.
-3. Si todo fue bien, aparece un boton **Reiniciar panel**. Al pulsarlo el proceso se cierra a proposito; systemd (con `Restart=always`, como arriba) lo vuelve a levantar en segundos ya con el codigo nuevo. Sin un supervisor asi, el panel se queda caido hasta que lo arranques a mano con `./run.sh`.
+3. Si todo fue bien, aparece un boton **Reiniciar panel**. Al pulsarlo el proceso se cierra a proposito; systemd (con `Restart=always`, como arriba) o el propio bucle de `./run.sh` (ver mas abajo) lo vuelven a levantar en segundos ya con el codigo nuevo. Sin ninguno de los dos (p. ej. `run.bat` en Windows, o el proceso lanzado de otra forma), el panel se queda caido hasta que lo arranques a mano.
 
-Sin servicio systemd (ejecucion manual con `./run.sh`), usa este sistema solo para descargar+instalar y reinicia tu mismo el proceso cuando te convenga.
+Sin servicio systemd, `./run.sh` ya relanza el panel solo si el proceso se cierra por su cuenta (como al pulsar **Reiniciar panel**): corre en un bucle dentro de la misma terminal, sin arrancar con el sistema ni quedar gestionado por systemd. Un `Ctrl+C` sigue cortando el bucle y cerrando el panel del todo — no reinicia. `run.bat` (Windows) no tiene este bucle; ahi reinicia tu mismo el proceso cuando te convenga.
 
 ## Diagnostico de arranque
 

@@ -6,6 +6,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.9.0] - 2026-08-19
+
+### Anadido
+- `run.sh` relanza el panel solo si el proceso se cierra por su cuenta (p.ej.
+  tras pulsar **Reiniciar panel** despues de actualizar), sin necesitar
+  systemd: corre en un bucle dentro de la misma terminal, y `Ctrl+C` sigue
+  cortandolo del todo en vez de reiniciar.
+
 ## [0.8.0] - 2026-08-19
 
 ### Anadido
