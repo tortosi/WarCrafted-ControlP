@@ -22,6 +22,7 @@ class PluginMetadata:
         ui_title: str | None = None,
         ui_route: str | None = None,
         icon: str | None = None,
+        background_script: str | None = None,
     ):
         self.name = name
         self.version = version
@@ -30,6 +31,7 @@ class PluginMetadata:
         self.ui_title = ui_title
         self.ui_route = ui_route
         self.icon = icon
+        self.background_script = background_script
 
 
 def _load_manifest(plugin_path: Path) -> PluginMetadata:
@@ -47,6 +49,7 @@ def _load_manifest(plugin_path: Path) -> PluginMetadata:
                 ui_title=ui.get("title"),
                 ui_route=ui.get("route"),
                 icon=ui.get("icon"),
+                background_script=ui.get("background_script"),
             )
         except (json.JSONDecodeError, OSError) as exc:
             logger.warning(f"Error leyendo manifest de {plugin_path.name}: {exc}")

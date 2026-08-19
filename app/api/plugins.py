@@ -19,6 +19,7 @@ def _plugin_summary(slug: str, metadata) -> dict:
         "title": metadata.ui_title or metadata.name,
         "route": metadata.ui_route,
         "icon": metadata.icon,
+        "background_script": metadata.background_script,
     }
 
 

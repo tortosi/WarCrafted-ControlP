@@ -6,6 +6,15 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.10.0] - 2026-08-19
+
+### Anadido
+- Los plugins ya pueden declarar un `ui.background_script` opcional en su
+  `manifest.json`: un script que se carga en segundo plano en **todas** las
+  paginas del panel (no solo en la vista propia del plugin), pensado para
+  vigilar el estado del panel y reaccionar aunque el usuario no tenga esa
+  vista abierta. Cero coste para plugins que no lo declaren.
+
 ## [0.9.0] - 2026-08-19
 
 ### Anadido
