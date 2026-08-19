@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.api import auth, console, plugins as plugins_api, servers, system
 from app.config import BASE_DIR, get_settings
+from app.core_update import current_version
 from app.database import init_db
 from app.deps import get_db
 from app.plugins.loader import load_plugins
@@ -35,6 +36,11 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "app" / "templates")
+# Cache-buster para /static/*: sin esto, un navegador con el JS/CSS ya cacheado
+# sigue ejecutando la version vieja tras un `git pull` + reinicio del panel,
+# aunque el servidor ya sirva el fichero nuevo (paso silenciosamente por esto
+# en la 0.7.0: el frontend viejo leia un campo de la API que ya no existe).
+templates.env.globals["app_version"] = current_version()
 
 app.include_router(auth.router)
 app.include_router(servers.router)

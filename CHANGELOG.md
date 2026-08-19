@@ -6,6 +6,25 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.7.1] - 2026-08-19
+
+### Corregido
+- El boton **Detener** quedaba deshabilitado durante todo el estado
+  Deteniendo, sin forma de insistir si el apagado se quedaba colgado (visto
+  con AzerothCore + muchos bots online: el proceso puede quedarse sin hacer
+  nada, con SOAP y el puerto de juego ya cerrados, sin llegar a salir). Ahora
+  el boton pasa a **Forzar detencion** y sigue activo; un segundo clic se
+  salta el SOAP (si el apagado normal no funciono, repetirlo tampoco lo
+  hara) y manda SIGTERM, escalando a SIGKILL si no responde en 5 segundos.
+- El HTML de cada pagina enlazaba sus `.js`/`.css` sin cache-busting; tras
+  actualizar el panel (p.ej. a 0.7.0, que renombro `online` por `state` en
+  `GET /api/servers`), un navegador con el `dashboard.js` viejo ya en cache
+  seguia leyendo el campo que ya no existe y mostraba todo como Detenido
+  aunque el backend estuviera bien. Ahora cada `<script>`/`<link>` de
+  `/static/` lleva `?v=<VERSION>`, asi que una actualizacion del panel
+  siempre fuerza a pedir el fichero nuevo. Si ya te paso, con recargar la
+  pagina (Ctrl/Cmd+Shift+R) se soluciona sin esperar a este cambio.
+
 ## [0.7.0] - 2026-08-19
 
 ### Anadido

@@ -45,7 +45,7 @@ Cada tarjeta incluye cuatro acciones:
 | Boton | Accion |
 |---|---|
 | **Iniciar** | Lanza el proceso `worldserver` usando el comando configurado en `INSTANCE_<N>_START_CMD`. Deshabilitado salvo en estado Detenido. |
-| **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. Deshabilitado en Detenido y Deteniendo. |
+| **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. Deshabilitado solo en Detenido. Si la instancia se queda colgada en Deteniendo (puede pasar con muchos bots online), el boton pasa a **Forzar detencion**: un clic manda SIGTERM y, si no responde en 5 segundos, SIGKILL. |
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
 | **Logs** | Abre el historico de logs de esa instancia (ver siguiente seccion). |
 

@@ -82,9 +82,9 @@ function serverCard(server) {
             Iniciar
           </button>
           <button data-action="stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                  ${server.state === 'offline' || server.state === 'stopping' ? 'disabled' : ''}
-                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.state === 'offline' || server.state === 'stopping' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
-            Detener
+                  ${server.state === 'offline' ? 'disabled' : ''}
+                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.state === 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+            ${server.state === 'stopping' ? 'Forzar detencion' : 'Detener'}
           </button>
         </div>
         <div class="flex gap-2">

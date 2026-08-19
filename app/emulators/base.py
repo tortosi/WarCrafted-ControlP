@@ -305,7 +305,38 @@ class BaseEmulatorDriver(ABC):
         logger.info("Instancia '%s' iniciada con PID %s", self.config.name, process.pid)
         return {"success": True, "detail": "Servidor iniciado correctamente.", "pid": process.pid}
 
+    def _force_stop(self) -> dict:
+        """Segundo intento (o posterior): ya se pidio un apagado antes y sigue vivo.
+
+        No reintenta SOAP (si el apagado normal no funciono, repetir el mismo
+        comando no suele arreglarlo) — manda SIGTERM y, si no responde en 5s
+        (proceso realmente colgado, visto con AzerothCore + muchos bots online),
+        escala a SIGKILL.
+        """
+        proc = self.find_process()
+        if not proc:
+            self._stopping_file().unlink(missing_ok=True)
+            return {"success": False, "detail": "El servidor no estaba en ejecucion."}
+        try:
+            proc.terminate()
+            _, alive = psutil.wait_procs([proc], timeout=5)
+            if alive:
+                proc.kill()
+                detail = f"El proceso (PID {proc.pid}) no respondio a la señal de apagado; se forzo el cierre (SIGKILL)."
+            else:
+                detail = f"Se reenvio la señal de apagado al proceso (PID {proc.pid})."
+        except (psutil.NoSuchProcess, psutil.AccessDenied) as exc:
+            self._stopping_file().unlink(missing_ok=True)
+            logger.error("Fallo al forzar la detencion de '%s': %s", self.config.name, exc)
+            raise ProcessControlError(f"No se pudo detener el proceso (PID {proc.pid}): {exc}") from exc
+        self._clear_pid()
+        logger.warning("Detencion forzada de '%s' (PID %s): %s", self.config.name, proc.pid, detail)
+        return {"success": True, "detail": detail}
+
     def stop(self) -> dict:
+        if self._stopping_file().exists():
+            return self._force_stop()
+
         self._stopping_file().touch()
         try:
             output = self.execute_soap_command("server shutdown 5")
