@@ -6,6 +6,20 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.14.1] - 2026-08-19
+
+### Corregido
+- Layout del dashboard: las tarjetas de authserver y de reino vuelven a un unico grid
+  (antes eran dos rejillas separadas con etiquetas "Instancias de authserver"/
+  "Instancias de emulador" que rompian la alineacion con las 3 tarjetas de metricas del
+  host). Ahora se intercalan por grupo (authserver seguido de sus reinos) y las columnas
+  se ajustan al grupo mas grande: un authserver compartido por 2 reinos ocupa una fila de
+  3 columnas junto a ambos; dos authservers independientes ocupan 2 filas de 2 columnas,
+  cada uno junto a su reino.
+- El `id` del contenedor del grid pasa de `servers-grid`/`auth-services-grid` a
+  `instances-grid` (uno solo); el plugin `metrics_history`, que localizaba `servers-grid`
+  para inyectar su mini-grafica, se actualiza a la vez (ver `WarCraftedCP-plugins`).
+
 ## [0.14.0] - 2026-08-19
 
 ### Cambiado

@@ -50,17 +50,19 @@ Cada tarjeta incluye cuatro acciones:
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
 | **Logs** | Abre el historico de logs de esa instancia (ver siguiente seccion). |
 
-### Instancias de authserver
+### Tarjetas de authserver
 
-Encima de las tarjetas de instancia hay una seccion aparte con una tarjeta por cada
-authserver configurado, con **Cuentas creadas** y **Cuentas conectadas** y botones
-**Iniciar**/**Detener**. Si dos o mas reinos comparten el mismo authserver
+Junto a las tarjetas de instancia, en el mismo grid, hay una tarjeta por cada authserver
+configurado, con **Cuentas creadas** y **Cuentas conectadas** y botones **Iniciar**/
+**Detener**. Si dos o mas reinos comparten el mismo authserver
 (`INSTANCE_<N>_AUTH_SERVICE_ID` apuntando al mismo `AUTH_SERVICE_<M>_*`), aparece una unica
-tarjeta con la lista de **reinos asociados**, en vez de una tarjeta por reino. El authserver
-no tiene consola SOAP ni log propio en el panel, asi que su estado es solo Detenido/En linea
-(el proceso existe o no) y su parada es siempre inmediata: SIGTERM y, si no responde en 5
-segundos, SIGKILL directamente (sin el paso intermedio de "Forzar detencion" del
-worldserver).
+tarjeta con la lista de **reinos asociados**, en vez de una tarjeta por reino. El grid
+agrupa cada authserver junto a sus reinos y ajusta el numero de columnas al grupo mas
+grande, asi que un authserver privado queda junto a su reino, y uno compartido por varios
+reinos encabeza la fila con todos ellos al lado. El authserver no tiene consola SOAP ni log
+propio en el panel, asi que su estado es solo Detenido/En linea (el proceso existe o no) y
+su parada es siempre inmediata: SIGTERM y, si no responde en 5 segundos, SIGKILL
+directamente (sin el paso intermedio de "Forzar detencion" del worldserver).
 
 ### Historico de logs y "ver en vivo"
 

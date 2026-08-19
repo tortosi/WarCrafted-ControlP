@@ -1,7 +1,5 @@
 const statsEl = document.getElementById('system-stats');
-const gridEl = document.getElementById('servers-grid');
-const authGridEl = document.getElementById('auth-services-grid');
-const authSectionEl = document.getElementById('auth-services-section');
+const gridEl = document.getElementById('instances-grid');
 const feedbackEl = document.getElementById('action-feedback');
 let feedbackTimeout = null;
 
@@ -161,18 +159,63 @@ function authServiceCard(service) {
         </div>
       </div>
       <div class="flex gap-2 mt-1">
-        <button data-action="start" data-id="${escapeHtml(service.id)}" data-name="${escapeHtml(service.name)}"
+        <button data-kind="auth" data-action="start" data-id="${escapeHtml(service.id)}" data-name="${escapeHtml(service.name)}"
                 ${service.state !== 'offline' ? 'disabled' : ''}
                 class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${service.state !== 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
           Iniciar
         </button>
-        <button data-action="stop" data-id="${escapeHtml(service.id)}" data-name="${escapeHtml(service.name)}"
+        <button data-kind="auth" data-action="stop" data-id="${escapeHtml(service.id)}" data-name="${escapeHtml(service.name)}"
                 ${service.state === 'offline' ? 'disabled' : ''}
                 class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${service.state === 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
           Detener
         </button>
       </div>
     </div>`;
+}
+
+// Intercala cada tarjeta de authserver con las de los reinos que le apuntan
+// (auth_service_id), en vez de dos rejillas separadas: un authserver privado
+// (1 reino) queda emparejado en su misma fila; uno compartido (2+) encabeza
+// el grupo seguido de todos sus reinos. Las columnas se ajustan al grupo mas
+// grande para que cada grupo ocupe una fila limpia, igual que las 3 tarjetas
+// de metricas del host de arriba.
+function renderInstancesGrid(servers, authServices) {
+  if (!servers.length) {
+    gridEl.className = 'grid grid-cols-1 gap-4';
+    gridEl.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400">No hay instancias configuradas en el .env.</p>';
+    return;
+  }
+
+  const serversByAuthId = new Map();
+  servers.forEach((server) => {
+    const key = server.auth_service_id || `__sin-auth-${server.id}`;
+    if (!serversByAuthId.has(key)) serversByAuthId.set(key, []);
+    serversByAuthId.get(key).push(server);
+  });
+
+  const cards = [];
+  const usedKeys = new Set();
+  let maxGroupSize = 1;
+
+  authServices.forEach((service) => {
+    const group = serversByAuthId.get(service.id) || [];
+    usedKeys.add(service.id);
+    cards.push(authServiceCard(service));
+    group.forEach((server) => cards.push(serverCard(server)));
+    maxGroupSize = Math.max(maxGroupSize, 1 + group.length);
+  });
+
+  // Reinos sin servicio en /auth-services (no deberia pasar: toda instancia
+  // habilitada tiene al menos su authserver implicito) o con config invalida
+  // (auth_service_id vacio): se muestran sueltos al final, sin perderlos.
+  serversByAuthId.forEach((group, key) => {
+    if (usedKeys.has(key)) return;
+    group.forEach((server) => cards.push(serverCard(server)));
+  });
+
+  const cols = Math.min(maxGroupSize, 4);
+  gridEl.className = `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${cols} gap-4`;
+  gridEl.innerHTML = cards.join('');
 }
 
 async function refreshServers() {
@@ -185,17 +228,10 @@ async function refreshServers() {
       window.location.href = '/login';
       return;
     }
-    if (serversRes.ok) {
-      const servers = await serversRes.json();
-      gridEl.innerHTML = servers.length
-        ? servers.map(serverCard).join('')
-        : '<p class="text-sm text-gray-500 dark:text-gray-400">No hay instancias configuradas en el .env.</p>';
-    }
-    if (authRes.ok) {
-      const authServices = await authRes.json();
-      authSectionEl.classList.toggle('hidden', authServices.length === 0);
-      authGridEl.innerHTML = authServices.map(authServiceCard).join('');
-    }
+    if (!serversRes.ok || !authRes.ok) return;
+    const servers = await serversRes.json();
+    const authServices = await authRes.json();
+    renderInstancesGrid(servers, authServices);
   } catch (err) {
     // se reintenta en el siguiente ciclo de refresco
   }
@@ -411,13 +447,11 @@ gridEl.addEventListener('click', async (event) => {
     openLogModal(button.dataset.id, button.dataset.name);
     return;
   }
+  if (button.dataset.kind === 'auth') {
+    await handleActionClick(button, (id, action) => `/api/servers/auth-services/${id}/${action}`, ' authserver');
+    return;
+  }
   await handleActionClick(button, (id, action) => `/api/servers/${id}/${action}`, '');
-});
-
-authGridEl.addEventListener('click', async (event) => {
-  const button = event.target.closest('button[data-action]');
-  if (!button) return;
-  await handleActionClick(button, (id, action) => `/api/servers/auth-services/${id}/${action}`, ' authserver');
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
