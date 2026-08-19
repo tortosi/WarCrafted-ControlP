@@ -9,6 +9,10 @@ CONSOLE_CATEGORY = "worldserver"
 # varios MB/GB enteros en memoria y congelar el navegador al renderizarlos.
 PREVIEW_MAX_BYTES = 512_000
 
+# Prefijo que marca un "filename" como archivo nativo de AzerothCore (vive en
+# ACORE_LOGS_DIR, no en la carpeta de historico de esta instancia).
+NATIVE_PREFIX = "native:"
+
 NATIVE_CATEGORIES: dict[str, str] = {
     "server": "Server.log",
     "errors": "Errors.log",
@@ -18,6 +22,14 @@ NATIVE_CATEGORIES: dict[str, str] = {
 }
 
 _FILENAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_([a-z0-9]+)\.log$")
+
+# Secuencias de escape ANSI/VT100 (colores, "AC> " redibujandose con codigos
+# como "\x1b[?2004l" cuando el proceso no tiene una terminal real detras).
+_ANSI_ESCAPE_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+def strip_ansi(text: str) -> str:
+    return _ANSI_ESCAPE_RE.sub("", text)
 
 
 def timestamp_now() -> str:
@@ -113,6 +125,34 @@ def list_runs(instance_dir: Path) -> list[dict]:
                 "category": category,
                 "started_at": timestamp,
                 "size_bytes": size_bytes,
+                "source": "historico",
+            }
+        )
+    runs.sort(key=lambda r: r["started_at"], reverse=True)
+    return runs
+
+
+def scan_native_logs(native_dir: Path) -> list[dict]:
+    """Escanea en vivo el LogsDir real de AzerothCore (Server.log, Char.log,
+    DBErrors.log...): a diferencia de `list_runs`, no depende de que la
+    categoria este pre-configurada en `LOG_CATEGORIES` ni de haberla archivado
+    antes; refleja el contenido actual, tal cual lo tiene AzerothCore ahora.
+    """
+    if not native_dir.is_dir():
+        return []
+    runs = []
+    for path in native_dir.glob("*.log"):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        runs.append(
+            {
+                "filename": f"{NATIVE_PREFIX}{path.name}",
+                "category": path.stem,
+                "started_at": _timestamp_from_mtime(path),
+                "size_bytes": stat.st_size,
+                "source": "nativo",
             }
         )
     runs.sort(key=lambda r: r["started_at"], reverse=True)
@@ -136,7 +176,25 @@ def read_preview(path: Path, max_bytes: int = PREVIEW_MAX_BYTES) -> tuple[str, b
         newline = raw.find(b"\n")
         if newline != -1:
             raw = raw[newline + 1 :]
-    return raw.decode("utf-8", errors="replace"), truncated, size
+    content = strip_ansi(raw.decode("utf-8", errors="replace"))
+    return content, truncated, size
+
+
+# AzerothCore imprime esta linea (Main.cpp) solo cuando ya cargo mundo,
+# mapas, red y SOAP, y el realm queda unido en la DB (REALM_FLAG_VERSION_MISMATCH
+# se limpia justo antes) — es la senal fiable de "ya se puede entrar al reino".
+READY_MARKER = "(worldserver-daemon) ready"
+
+
+def contains_ready_marker(path: Path) -> bool:
+    try:
+        with path.open("r", errors="replace") as fh:
+            for line in fh:
+                if READY_MARKER in line:
+                    return True
+    except OSError:
+        return False
+    return False
 
 
 def tail_file(path: Path, lines: int = 20) -> str:
@@ -147,3 +205,44 @@ def tail_file(path: Path, lines: int = 20) -> str:
     except OSError:
         return ""
     return "\n".join(content[-lines:])
+
+
+def pump_console_output(stream, log_fh, max_repeat: int = 20) -> None:
+    """Lee `stream` (stdout del proceso) linea a linea, limpia codigos ANSI y
+    corta una linea que se repite sin fin.
+
+    Sin esto, un proceso sin terminal real detras (p.ej. el hilo de consola
+    de AzerothCore redibujando su prompt "AC>" contra un stdin ya cerrado)
+    puede llenar el disco en minutos. Corre en un hilo mientras el proceso
+    vive; termina solo cuando el proceso cierra su salida estandar.
+    """
+    last_line = None
+    repeat_count = 0
+    try:
+        for raw_line in stream:
+            line = strip_ansi(raw_line).rstrip("\r\n")
+            if line == last_line:
+                repeat_count += 1
+                if repeat_count == max_repeat:
+                    log_fh.write("[... linea repetida, se omiten mas repeticiones ...]\n")
+                    log_fh.flush()
+                if repeat_count >= max_repeat:
+                    # Da tiempo a que el pipe se llene y frene al proceso que repite sin fin.
+                    time.sleep(0.05)
+                    continue
+            else:
+                last_line = line
+                repeat_count = 0
+            log_fh.write(line + "\n")
+            log_fh.flush()
+    except (OSError, ValueError):
+        pass
+    finally:
+        try:
+            stream.close()
+        except OSError:
+            pass
+        try:
+            log_fh.close()
+        except OSError:
+            pass

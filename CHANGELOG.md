@@ -6,6 +6,35 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.7.0] - 2026-08-19
+
+### Anadido
+- El estado de cada instancia ya no es solo "en marcha/parada": el dashboard
+  distingue **Arrancando** (proceso vivo pero el mundo aun no ha terminado
+  de cargar) y **Deteniendo** (apagado en curso) de **En linea** y
+  **Detenido**, con su etiqueta debajo del nombre. La deteccion de "ya se
+  puede entrar al reino" busca en el log de consola la linea que AzerothCore
+  imprime justo cuando terminan de cargar mundo, red y SOAP
+  (`"(worldserver-daemon) ready"`). Iniciar se deshabilita salvo en
+  Detenido; Detener se deshabilita en Detenido y Deteniendo.
+
+### Corregido
+- La captura de consola guardaba las secuencias ANSI/VT100 tal cual (colores,
+  redibujados de "AC> "), y si el proceso no tenia una terminal real detras
+  podia quedarse redibujando el prompt sin fin, llenando el log con cientos
+  de MB de basura. Ahora un hilo lee la salida del proceso, limpia los
+  codigos ANSI y corta una linea que se repite mas de 20 veces seguidas
+  (deja un aviso y frena al proceso via backpressure del pipe). Tambien se
+  limpian codigos ANSI al servir la vista previa y el "ver en vivo", por si
+  quedan logs antiguos ya afectados.
+
+### Anadido
+- El modal **Logs** tambien lista y muestra los ficheros nativos que
+  AzerothCore tenga en ese momento en su `LogsDir` (`Server.log`,
+  `DBErrors.log`, `Char.log`, etc.), agrupados aparte como "AzerothCore (en
+  vivo)" en el desplegable — ya no hace falta tenerlos pre-configurados en
+  `LOG_CATEGORIES` para poder verlos.
+
 ## [0.6.1] - 2026-08-19
 
 ### Corregido

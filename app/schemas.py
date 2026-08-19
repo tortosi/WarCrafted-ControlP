@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -37,7 +39,7 @@ class ServerSummary(BaseModel):
     name: str
     type: str
     enabled: bool
-    online: bool
+    state: Literal["offline", "starting", "online", "stopping"]
     pid: int | None = None
     cpu_percent: float | None = None
     cpu_percent_host: float | None = None
@@ -51,6 +53,7 @@ class LogRun(BaseModel):
     category: str
     started_at: str
     size_bytes: int
+    source: str
 
 
 class LogContent(BaseModel):

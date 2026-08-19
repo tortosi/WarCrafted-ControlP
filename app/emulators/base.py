@@ -1,6 +1,7 @@
 import logging
 import shlex
 import subprocess
+import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -65,6 +66,12 @@ class BaseEmulatorDriver(ABC):
     def _pid_file(self) -> Path:
         return PID_DIR / f"{self.config.id}.pid"
 
+    def _ready_file(self) -> Path:
+        return PID_DIR / f"{self.config.id}.ready"
+
+    def _stopping_file(self) -> Path:
+        return PID_DIR / f"{self.config.id}.stopping"
+
     def _log_instance_dir(self) -> Path:
         return self._logs_root / self.config.id
 
@@ -82,10 +89,23 @@ class BaseEmulatorDriver(ABC):
         return None
 
     def list_log_runs(self) -> list[dict]:
-        return log_manager.list_runs(self._log_instance_dir())
+        native = (
+            log_manager.scan_native_logs(Path(self.config.acore_logs_dir))
+            if self.config.acore_logs_dir
+            else []
+        )
+        return log_manager.list_runs(self._log_instance_dir()) + native
 
     def log_run_path(self, filename: str) -> Path | None:
-        path = log_manager.resolve_safe(self._log_instance_dir(), filename)
+        if filename.startswith(log_manager.NATIVE_PREFIX):
+            if not self.config.acore_logs_dir:
+                return None
+            base_dir = Path(self.config.acore_logs_dir)
+            name = filename.removeprefix(log_manager.NATIVE_PREFIX)
+        else:
+            base_dir = self._log_instance_dir()
+            name = filename
+        path = log_manager.resolve_safe(base_dir, name)
         if path is None or not path.is_file():
             return None
         return path
@@ -161,10 +181,22 @@ class BaseEmulatorDriver(ABC):
                 return proc
         return None
 
+    def _is_ready(self) -> bool:
+        """Ya se puede entrar al reino (mundo, red y SOAP cargados), no solo que el proceso exista."""
+        if self._ready_file().exists():
+            return True
+        log_path = self.current_console_log()
+        if log_path and log_manager.contains_ready_marker(log_path):
+            self._ready_file().touch()
+            return True
+        return False
+
     def get_process_status(self) -> dict:
         proc = self.find_process()
         if not proc:
-            return {"online": False, "pid": None, "cpu_percent": None, "cpu_percent_host": None, "memory_mb": None}
+            self._ready_file().unlink(missing_ok=True)
+            self._stopping_file().unlink(missing_ok=True)
+            return {"state": "offline", "pid": None, "cpu_percent": None, "cpu_percent_host": None, "memory_mb": None}
         try:
             # cpu_percent(interval=...) hace una medicion "antes/despues" con sleep real;
             # llamarlo dentro de oneshot() reutiliza el valor "antes" cacheado y siempre da 0%.
@@ -176,15 +208,23 @@ class BaseEmulatorDriver(ABC):
             cpu_percent_host = round(cpu_percent / cpu_count, 1)
             with proc.oneshot():
                 memory_mb = round(proc.memory_info().rss / (1024 * 1024), 1)
-            return {
-                "online": True,
-                "pid": proc.pid,
-                "cpu_percent": cpu_percent,
-                "cpu_percent_host": cpu_percent_host,
-                "memory_mb": memory_mb,
-            }
         except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return {"online": False, "pid": None, "cpu_percent": None, "cpu_percent_host": None, "memory_mb": None}
+            return {"state": "offline", "pid": None, "cpu_percent": None, "cpu_percent_host": None, "memory_mb": None}
+
+        if self._stopping_file().exists():
+            state = "stopping"
+        elif self._is_ready():
+            state = "online"
+        else:
+            state = "starting"
+
+        return {
+            "state": state,
+            "pid": proc.pid,
+            "cpu_percent": cpu_percent,
+            "cpu_percent_host": cpu_percent_host,
+            "memory_mb": memory_mb,
+        }
 
     def execute_soap_command(self, command: str) -> str:
         return self.soap.execute(command)
@@ -206,6 +246,9 @@ class BaseEmulatorDriver(ABC):
         except ValueError as exc:
             raise ProcessControlError(f"START_CMD invalido: {exc}") from exc
 
+        self._ready_file().unlink(missing_ok=True)
+        self._stopping_file().unlink(missing_ok=True)
+
         instance_dir = self._log_instance_dir()
         instance_dir.mkdir(parents=True, exist_ok=True)
 
@@ -223,18 +266,29 @@ class BaseEmulatorDriver(ABC):
 
         try:
             log_fh.write(f"--- Inicio {self.config.name} ({time.strftime('%Y-%m-%d %H:%M:%S')}) ---\n")
+            log_fh.flush()
             process = subprocess.Popen(
                 args,
                 cwd=str(workdir) if workdir else None,
-                stdout=log_fh,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
                 start_new_session=True,
             )
         except OSError as exc:
+            log_fh.close()
             logger.error("Fallo al iniciar '%s': %s", self.config.name, exc)
             raise ProcessControlError(f"No se pudo ejecutar '{self.config.start_cmd}': {exc}") from exc
-        finally:
-            log_fh.close()
+
+        # El hilo lee stdout/stderr del proceso mientras vive, limpia ANSI y corta
+        # repeticiones (ver log_manager.pump_console_output); es quien cierra log_fh.
+        threading.Thread(
+            target=log_manager.pump_console_output,
+            args=(process.stdout, log_fh),
+            daemon=True,
+        ).start()
 
         time.sleep(0.5)
         return_code = process.poll()
@@ -252,6 +306,7 @@ class BaseEmulatorDriver(ABC):
         return {"success": True, "detail": "Servidor iniciado correctamente.", "pid": process.pid}
 
     def stop(self) -> dict:
+        self._stopping_file().touch()
         try:
             output = self.execute_soap_command("server shutdown 5")
             logger.info("Instancia '%s' detenida via SOAP.", self.config.name)
@@ -259,10 +314,12 @@ class BaseEmulatorDriver(ABC):
         except SoapError as exc:
             proc = self.find_process()
             if not proc:
+                self._stopping_file().unlink(missing_ok=True)
                 return {"success": False, "detail": f"El servidor no estaba en ejecucion. ({exc})"}
             try:
                 proc.terminate()
             except (psutil.NoSuchProcess, psutil.AccessDenied) as term_exc:
+                self._stopping_file().unlink(missing_ok=True)
                 logger.error("Fallo al detener '%s': %s", self.config.name, term_exc)
                 raise ProcessControlError(
                     f"No se pudo detener el proceso (PID {proc.pid}): {term_exc}"
@@ -282,5 +339,5 @@ class BaseEmulatorDriver(ABC):
 
     def get_status(self) -> dict:
         status = self.get_process_status()
-        status["players_online"] = self.get_online_players() if status["online"] else None
+        status["players_online"] = self.get_online_players() if status["state"] == "online" else None
         return status

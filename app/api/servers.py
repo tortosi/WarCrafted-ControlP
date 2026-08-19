@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 
 from app import models, schemas
 from app.deps import get_current_user
+from app.emulators import log_manager
 from app.emulators.base import BaseEmulatorDriver, ProcessControlError
 from app.emulators.manager import EmulatorManager, get_manager
 from app.soap.client import SoapError
@@ -21,7 +22,7 @@ def list_servers(
             driver.get_status()
             if driver.config.enabled
             else {
-                "online": False,
+                "state": "offline",
                 "pid": None,
                 "cpu_percent": None,
                 "cpu_percent_host": None,
@@ -35,7 +36,7 @@ def list_servers(
                 name=driver.config.name,
                 type=driver.config.type,
                 enabled=driver.config.enabled,
-                online=info["online"],
+                state=info["state"],
                 pid=info["pid"],
                 cpu_percent=info["cpu_percent"],
                 cpu_percent_host=info["cpu_percent_host"],
@@ -51,7 +52,7 @@ def list_servers(
                 name=config.name,
                 type=config.type,
                 enabled=config.enabled,
-                online=False,
+                state="offline",
                 error=message,
             )
         )
@@ -129,7 +130,8 @@ def download_server_log(
     path = driver.log_run_path(filename)
     if path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo de log no encontrado")
-    download_name = filename.removesuffix(".log") + ".txt"
+    plain_name = filename.removeprefix(log_manager.NATIVE_PREFIX)
+    download_name = plain_name.removesuffix(".log") + ".txt"
     return FileResponse(path, media_type="text/plain", filename=download_name)
 
 

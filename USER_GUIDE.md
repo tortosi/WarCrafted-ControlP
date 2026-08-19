@@ -28,7 +28,12 @@ Estos datos se actualizan automaticamente cada 5 segundos.
 
 Cada instancia configurada en `.env` aparece como una tarjeta con:
 
-- **Indicador de estado**: punto verde si el proceso esta en ejecucion, gris si esta detenido.
+- **Indicador de estado**: punto y etiqueta bajo el nombre con 4 estados posibles:
+  - **Detenido** (gris): no hay proceso en ejecucion.
+  - **Arrancando** (ambar): el proceso ya esta vivo pero el mundo todavia no ha
+    terminado de cargar — el reino aun no es accesible.
+  - **En linea** (verde): mundo, red y SOAP ya cargados, se puede entrar.
+  - **Deteniendo** (ambar): apagado en curso, esperando a que el proceso termine.
 - **Tipo de emulador**: etiqueta "AzerothCore" o "Playerbots".
 - **CPU / RAM**: consumo real del proceso `worldserver` de esa instancia (cada instancia se identifica por su propio PID y su `WORKDIR`, asi que dos instancias que comparten el mismo binario no se mezclan entre si). El % de CPU esta normalizado a 1 nucleo = 100% (puede superar el 100% en un proceso multihilo con varios nucleos ocupados); debajo aparece el mismo dato como % de la capacidad total del host, comparable con el CPU del host de las tarjetas de arriba.
 - **Jugadores**: numero de personajes conectados. En instancias Playerbots, las cuentas de bots se excluyen del conteo para reflejar solo jugadores humanos.
@@ -39,8 +44,8 @@ Cada tarjeta incluye cuatro acciones:
 
 | Boton | Accion |
 |---|---|
-| **Iniciar** | Lanza el proceso `worldserver` usando el comando configurado en `INSTANCE_<N>_START_CMD`. Aparece sombreado y deshabilitado mientras la instancia ya esta en ejecucion. |
-| **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. Aparece sombreado y deshabilitado mientras la instancia esta detenida. |
+| **Iniciar** | Lanza el proceso `worldserver` usando el comando configurado en `INSTANCE_<N>_START_CMD`. Deshabilitado salvo en estado Detenido. |
+| **Detener** | Envia un apagado controlado via SOAP (`server shutdown`); si el servicio SOAP no responde, intenta detener el proceso directamente. Deshabilitado en Detenido y Deteniendo. |
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
 | **Logs** | Abre el historico de logs de esa instancia (ver siguiente seccion). |
 
@@ -49,18 +54,29 @@ Cada tarjeta incluye cuatro acciones:
 Cada vez que arrancas una instancia, el panel guarda la salida de consola
 (stdout/stderr) del proceso en un fichero nuevo — no un unico log que crece
 sin fin, sino uno por arranque, para poder comparar sesiones distintas.
+Esta captura limpia los codigos de color/control ANSI y corta cualquier
+linea que se repita mas de 20 veces seguidas (p.ej. un prompt que se
+redibuja sin fin porque el proceso no tiene una terminal real detras), para
+que un cuelgue asi no llene el disco.
+
 Si ademas configuraste `INSTANCE_<N>_ACORE_LOGS_DIR` y
 `INSTANCE_<N>_LOG_CATEGORIES` en el `.env` (ver `.env.example`), el panel
 tambien guarda una copia de los logs nativos de AzerothCore de esas
 categorias (`server`, `errors`, `playerbots`, `gm`, `chat`) del arranque
-anterior, tomada justo antes de lanzar el proceso nuevo.
+anterior, tomada justo antes de lanzar el proceso nuevo. Ademas, si solo
+configuraste `INSTANCE_<N>_ACORE_LOGS_DIR`, el modal tambien muestra —
+agrupados aparte como "AzerothCore (en vivo)" — todos los ficheros `.log`
+que AzerothCore tenga ahora mismo en esa carpeta (`Server.log`,
+`DBErrors.log`, `Char.log`, etc.), sin necesidad de listarlos en
+`LOG_CATEGORIES`.
 
 El boton **Logs** de cada tarjeta abre una ventana con:
 
 - Un desplegable con todos los arranques guardados (mas reciente primero,
-  identificados por categoria y fecha). Por rendimiento, el visor solo
-  carga el ultimo medio MB de cada archivo; si el archivo es mas grande,
-  aparece un aviso encima del visor.
+  identificados por categoria y fecha) y, si aplica, los ficheros nativos
+  actuales de AzerothCore. Por rendimiento, el visor solo carga el ultimo
+  medio MB de cada archivo; si el archivo es mas grande, aparece un aviso
+  encima del visor.
 - **Ver en vivo**: sigue en tiempo real el log de consola del arranque
   activo, mientras la instancia sigue en ejecucion (mantiene como maximo
   las ultimas 2000 lineas en pantalla).

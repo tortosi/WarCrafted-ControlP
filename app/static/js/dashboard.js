@@ -26,6 +26,13 @@ function statCard(label, value, sub) {
     </div>`;
 }
 
+const SERVER_STATE_META = {
+  offline: { label: 'Detenido', dot: 'bg-gray-400' },
+  starting: { label: 'Arrancando...', dot: 'bg-amber-500 animate-pulse' },
+  online: { label: 'En linea', dot: 'bg-emerald-500' },
+  stopping: { label: 'Deteniendo...', dot: 'bg-amber-500 animate-pulse' },
+};
+
 function serverCard(server) {
   if (server.error) {
     return `
@@ -38,14 +45,17 @@ function serverCard(server) {
       </div>`;
   }
 
-  const dotColor = server.online ? 'bg-emerald-500' : 'bg-gray-400';
+  const stateMeta = SERVER_STATE_META[server.state] || SERVER_STATE_META.offline;
   const typeLabel = server.type === 'playerbots' ? 'Playerbots' : 'AzerothCore';
   return `
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full ${dotColor}"></span>
-          <h3 class="font-medium">${escapeHtml(server.name)}</h3>
+          <span class="w-2.5 h-2.5 rounded-full ${stateMeta.dot}"></span>
+          <div>
+            <h3 class="font-medium leading-tight">${escapeHtml(server.name)}</h3>
+            <p class="text-[11px] text-gray-400 leading-tight">${stateMeta.label}</p>
+          </div>
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-100">${typeLabel}</span>
       </div>
@@ -67,13 +77,13 @@ function serverCard(server) {
       <div class="flex flex-col gap-2 mt-1">
         <div class="flex gap-2">
           <button data-action="start" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                  ${server.online ? 'disabled' : ''}
-                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.online ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+                  ${server.state !== 'offline' ? 'disabled' : ''}
+                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.state !== 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
             Iniciar
           </button>
           <button data-action="stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                  ${server.online ? '' : 'disabled'}
-                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.online ? 'hover:bg-gray-100 dark:hover:bg-gray-800' : 'opacity-50 cursor-not-allowed'}">
+                  ${server.state === 'offline' || server.state === 'stopping' ? 'disabled' : ''}
+                  class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.state === 'offline' || server.state === 'stopping' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
             Detener
           </button>
         </div>
@@ -155,7 +165,11 @@ function logCategoryLabel(category) {
 }
 
 function logRunLabel(run) {
-  return `${logCategoryLabel(run.category)} — ${run.started_at.replace('_', ' ')}`;
+  const when = run.started_at.replace('_', ' ');
+  if (run.source === 'nativo') {
+    return `${run.category} — modificado ${when}`;
+  }
+  return `${logCategoryLabel(run.category)} — ${when}`;
 }
 
 function formatBytes(bytes) {
@@ -253,9 +267,13 @@ async function openLogModal(id, name) {
       logModalContent.textContent = 'Todavia no hay logs guardados para esta instancia.';
       return;
     }
-    logModalSelect.innerHTML = runs
-      .map((run) => `<option value="${escapeHtml(run.filename)}">${escapeHtml(logRunLabel(run))}</option>`)
-      .join('');
+    const option = (run) => `<option value="${escapeHtml(run.filename)}">${escapeHtml(logRunLabel(run))}</option>`;
+    const historico = runs.filter((run) => run.source !== 'nativo');
+    const nativo = runs.filter((run) => run.source === 'nativo');
+    logModalSelect.innerHTML = [
+      historico.length ? `<optgroup label="Historico">${historico.map(option).join('')}</optgroup>` : '',
+      nativo.length ? `<optgroup label="AzerothCore (en vivo)">${nativo.map(option).join('')}</optgroup>` : '',
+    ].join('');
     await loadSelectedLog();
   } catch (err) {
     logModalContent.textContent = 'Error de conexion al listar los logs.';

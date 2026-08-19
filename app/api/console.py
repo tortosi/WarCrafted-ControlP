@@ -4,6 +4,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.database import SessionLocal
 from app.deps import get_current_user_ws
+from app.emulators import log_manager
 from app.emulators.manager import get_manager
 from app.soap.client import SoapError
 
@@ -79,7 +80,9 @@ async def server_logs_ws(websocket: WebSocket, instance_id: str):
             while True:
                 line = log_fh.readline()
                 if line:
-                    await websocket.send_text(line.rstrip("\n"))
+                    clean_line = log_manager.strip_ansi(line).rstrip("\r\n")
+                    if clean_line:
+                        await websocket.send_text(clean_line)
                     continue
                 try:
                     await asyncio.wait_for(websocket.receive_text(), timeout=1)
