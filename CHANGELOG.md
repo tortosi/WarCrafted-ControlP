@@ -6,6 +6,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.12.0] - 2026-08-19
+
+### Anadido
+- Dos funciones nuevas en `app.deps` para que un plugin gestione archivos de
+  configuracion de una instancia sin importar `EmulatorManager`:
+  `get_instance_modules_conf_dir()` (ruta de `etc/modules/`) y
+  `reload_instance_config()` (envia `reload config` por SOAP).
+
 ## [0.11.0] - 2026-08-19
 
 ### Anadido

@@ -1,5 +1,6 @@
 import time
 from collections import defaultdict
+from pathlib import Path
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from app import models
 from app.database import SessionLocal
 from app.emulators.manager import get_manager
 from app.security import decode_access_token
+from app.soap.client import SoapError
 
 _login_attempts = defaultdict(list)
 _cleanup_last = 0
@@ -107,6 +109,36 @@ def get_servers_snapshot() -> list[dict]:
             }
         )
     return snapshot
+
+
+def get_instance_modules_conf_dir(instance_id: str) -> Path | None:
+    """Directorio etc/modules/ de una instancia habilitada, o None si no existe.
+
+    Deriva la ruta del WORKDIR (etc/ es hermano de bin/), para que un plugin
+    pueda listar/editar los .conf de los modulos sin conocer el layout de
+    AzerothCore ni importar EmulatorManager directamente.
+    """
+    driver = get_manager().get_driver(instance_id)
+    if not driver or not driver.config.enabled or not driver.config.workdir:
+        return None
+    conf_dir = Path(driver.config.workdir).parent / "etc" / "modules"
+    return conf_dir if conf_dir.is_dir() else None
+
+
+def reload_instance_config(instance_id: str) -> str:
+    """Envia 'reload config' via SOAP a una instancia habilitada y devuelve la salida.
+
+    Fijo a ese comando exacto (no un ejecutor generico) para que un plugin
+    pueda aplicar cambios de configuracion sin abrir una via de ejecucion
+    arbitraria de comandos GM.
+    """
+    driver = get_manager().get_driver(instance_id)
+    if not driver or not driver.config.enabled:
+        raise RuntimeError("Instancia no encontrada o deshabilitada.")
+    try:
+        return driver.execute_soap_command("reload config")
+    except SoapError as exc:
+        raise RuntimeError(f"No se pudo recargar la configuracion via SOAP: {exc}") from exc
 
 
 def get_current_user_ws(token: str | None, db: Session) -> models.User | None:
