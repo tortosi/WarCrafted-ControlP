@@ -6,6 +6,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.15.0] - 2026-08-19
+
+### Anadido
+- Cinco funciones nuevas en `app.deps` para plugins de moderacion/soporte:
+  `execute_gm_command()` (cualquier comando GM por SOAP, `require_admin`; primer ejecutor
+  general que se expone a un plugin, misma superficie que la consola nativa del panel pero
+  mas restringida), `list_online_players()` (roster desde `db_characters`, sin ping: AzerothCore
+  no lo guarda en base de datos), y `search_items()`/`search_spells()`/`search_teleports()`
+  (autocompletado de solo lectura contra la base de datos de mundo).
+- Nuevo campo `INSTANCE_<N>_DB_WORLD` (por defecto `acore_world`), la base de datos de mundo
+  que usan esas tres ultimas funciones.
+
 ## [0.14.1] - 2026-08-19
 
 ### Corregido

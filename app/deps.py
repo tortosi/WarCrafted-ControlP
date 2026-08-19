@@ -2,6 +2,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+import pymysql
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -152,6 +153,115 @@ def reload_instance_config(instance_id: str) -> str:
         return driver.execute_soap_command("reload config")
     except SoapError as exc:
         raise RuntimeError(f"No se pudo recargar la configuracion via SOAP: {exc}") from exc
+
+
+def execute_gm_command(instance_id: str, command: str) -> str:
+    """Ejecuta cualquier comando GM via SOAP en una instancia habilitada.
+
+    A diferencia de reload_instance_config(), este acepta el comando que le pase
+    el plugin: es la misma superficie que ya tiene la consola nativa del panel
+    (`/ws/console`), aqui protegida ademas con require_admin. El plugin que lo
+    use es responsable de construir cadenas seguras (citar y escapar texto libre).
+    """
+    driver = get_manager().get_driver(instance_id)
+    if not driver or not driver.config.enabled:
+        raise RuntimeError("Instancia no encontrada o deshabilitada.")
+    try:
+        return driver.execute_soap_command(command)
+    except SoapError as exc:
+        raise RuntimeError(f"Comando SOAP fallido: {exc}") from exc
+
+
+def _connect_db(driver, database: str) -> pymysql.connections.Connection | None:
+    if not driver or not driver.config.enabled or not database:
+        return None
+    try:
+        return pymysql.connect(
+            host=driver.config.db_host,
+            port=driver.config.db_port,
+            user=driver.config.db_user,
+            password=driver.config.db_pass,
+            database=database,
+            connect_timeout=3,
+        )
+    except Exception:
+        return None
+
+
+def list_online_players(instance_id: str) -> list[dict]:
+    """Nombre/raza/clase/nivel/mapa/guid de los personajes conectados (db_characters).
+
+    Sin ping/latencia: AzerothCore no lo guarda en base de datos, vive solo en
+    memoria del worldserver (WorldSession::m_latency) mientras dura la sesion.
+    """
+    driver = get_manager().get_driver(instance_id)
+    conn = _connect_db(driver, driver.config.db_characters if driver else "")
+    if not conn:
+        return []
+    try:
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT guid, name, race, class, level, map FROM characters WHERE online = 1"
+                )
+                columns = ["guid", "name", "race", "class", "level", "map"]
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    except Exception:
+        return []
+
+
+def search_items(instance_id: str, query: str, limit: int = 20) -> list[dict]:
+    """Objetos cuyo nombre contiene `query` (db_world.item_template), para autocompletado."""
+    driver = get_manager().get_driver(instance_id)
+    conn = _connect_db(driver, driver.config.db_world if driver else "")
+    if not conn or not query:
+        return []
+    try:
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT entry, name FROM item_template WHERE name LIKE %s ORDER BY name LIMIT %s",
+                    (f"%{query}%", limit),
+                )
+                return [{"entry": row[0], "name": row[1]} for row in cursor.fetchall()]
+    except Exception:
+        return []
+
+
+def search_spells(instance_id: str, query: str, limit: int = 20) -> list[dict]:
+    """Hechizos cuyo nombre contiene `query` (db_world.spell_dbc), para autocompletado."""
+    driver = get_manager().get_driver(instance_id)
+    conn = _connect_db(driver, driver.config.db_world if driver else "")
+    if not conn or not query:
+        return []
+    try:
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT ID, Name_Lang_enUS FROM spell_dbc WHERE Name_Lang_enUS LIKE %s ORDER BY Name_Lang_enUS LIMIT %s",
+                    (f"%{query}%", limit),
+                )
+                return [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
+    except Exception:
+        return []
+
+
+def search_teleports(instance_id: str, query: str, limit: int = 20) -> list[dict]:
+    """Ubicaciones guardadas cuyo nombre contiene `query` (db_world.game_tele)."""
+    driver = get_manager().get_driver(instance_id)
+    conn = _connect_db(driver, driver.config.db_world if driver else "")
+    if not conn or not query:
+        return []
+    try:
+        with conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT name, map FROM game_tele WHERE name LIKE %s ORDER BY name LIMIT %s",
+                    (f"%{query}%", limit),
+                )
+                return [{"name": row[0], "map": row[1]} for row in cursor.fetchall()]
+    except Exception:
+        return []
 
 
 def get_current_user_ws(token: str | None, db: Session) -> models.User | None:

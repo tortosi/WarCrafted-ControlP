@@ -49,6 +49,7 @@ class InstanceConfig:
     acore_logs_dir: str = ""
     log_categories: str = ""
     db_auth: str = "acore_auth"
+    db_world: str = "acore_world"
 
 
 class BaseEmulatorDriver(ABC):

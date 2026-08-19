@@ -94,6 +94,7 @@ Cada instancia se define con variables numeradas usando el prefijo `INSTANCE_<N>
 | `INSTANCE_<N>_DB_USER` / `DB_PASS` | Credenciales de solo lectura para la base de datos |
 | `INSTANCE_<N>_DB_CHARACTERS` | Nombre de la base de datos `characters` del emulador |
 | `INSTANCE_<N>_DB_AUTH` | Nombre de la base de datos de cuentas (por defecto `acore_auth`), para las cifras de la tarjeta del authserver |
+| `INSTANCE_<N>_DB_WORLD` | Nombre de la base de datos de mundo (por defecto `acore_world`); solo la usan plugins de autocompletado (objetos, hechizos, ubicaciones) |
 
 Consulta `.env.example` para ver un ejemplo completo con dos instancias (una AzerothCore y una Playerbots).
 
