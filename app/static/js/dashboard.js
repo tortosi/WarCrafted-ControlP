@@ -1,5 +1,7 @@
 const statsEl = document.getElementById('system-stats');
 const gridEl = document.getElementById('servers-grid');
+const authGridEl = document.getElementById('auth-services-grid');
+const authSectionEl = document.getElementById('auth-services-section');
 const feedbackEl = document.getElementById('action-feedback');
 let feedbackTimeout = null;
 
@@ -127,62 +129,73 @@ async function refreshStats() {
   }
 }
 
-function authServerCard(server) {
-  const stateMeta = SERVER_STATE_META[server.auth_state] || SERVER_STATE_META.offline;
+function linkedInstancesLabel(names) {
+  if (!names.length) return 'Sin reinos asociados';
+  const label = names.length > 1 ? 'Reinos asociados' : 'Reino asociado';
+  return `${label}: ${names.map(escapeHtml).join(', ')}`;
+}
+
+function authServiceCard(service) {
+  const stateMeta = SERVER_STATE_META[service.state] || SERVER_STATE_META.offline;
   return `
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-3">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full ${stateMeta.dot}"></span>
           <div>
-            <h3 class="font-medium leading-tight">${escapeHtml(server.name)}</h3>
+            <h3 class="font-medium leading-tight">${escapeHtml(service.name)}</h3>
             <p class="text-[11px] text-gray-400 leading-tight">${stateMeta.label}</p>
           </div>
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Authserver</span>
       </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">${linkedInstancesLabel(service.linked_instances)}</p>
       <div class="grid grid-cols-2 gap-2 text-center text-sm">
         <div>
           <p class="text-gray-400 text-xs">Cuentas creadas</p>
-          <p class="font-medium">${server.accounts_total != null ? server.accounts_total : '-'}</p>
+          <p class="font-medium">${service.accounts_total != null ? service.accounts_total : '-'}</p>
         </div>
         <div>
           <p class="text-gray-400 text-xs">Cuentas conectadas</p>
-          <p class="font-medium">${server.accounts_online != null ? server.accounts_online : '-'}</p>
+          <p class="font-medium">${service.accounts_online != null ? service.accounts_online : '-'}</p>
         </div>
       </div>
       <div class="flex gap-2 mt-1">
-        <button data-action="auth-start" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                ${server.auth_state !== 'offline' ? 'disabled' : ''}
-                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.auth_state !== 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+        <button data-action="start" data-id="${escapeHtml(service.id)}" data-name="${escapeHtml(service.name)}"
+                ${service.state !== 'offline' ? 'disabled' : ''}
+                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${service.state !== 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
           Iniciar
         </button>
-        <button data-action="auth-stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
-                ${server.auth_state === 'offline' ? 'disabled' : ''}
-                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.auth_state === 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+        <button data-action="stop" data-id="${escapeHtml(service.id)}" data-name="${escapeHtml(service.name)}"
+                ${service.state === 'offline' ? 'disabled' : ''}
+                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${service.state === 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
           Detener
         </button>
       </div>
     </div>`;
 }
 
-function instanceRow(server) {
-  if (server.error) return serverCard(server);
-  return `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${authServerCard(server)}${serverCard(server)}</div>`;
-}
-
 async function refreshServers() {
   try {
-    const response = await fetch('/api/servers');
-    if (response.status === 401) {
+    const [serversRes, authRes] = await Promise.all([
+      fetch('/api/servers'),
+      fetch('/api/servers/auth-services'),
+    ]);
+    if (serversRes.status === 401) {
       window.location.href = '/login';
       return;
     }
-    if (!response.ok) return;
-    const servers = await response.json();
-    gridEl.innerHTML = servers.length
-      ? servers.map(instanceRow).join('')
-      : '<p class="text-sm text-gray-500 dark:text-gray-400">No hay instancias configuradas en el .env.</p>';
+    if (serversRes.ok) {
+      const servers = await serversRes.json();
+      gridEl.innerHTML = servers.length
+        ? servers.map(serverCard).join('')
+        : '<p class="text-sm text-gray-500 dark:text-gray-400">No hay instancias configuradas en el .env.</p>';
+    }
+    if (authRes.ok) {
+      const authServices = await authRes.json();
+      authSectionEl.classList.toggle('hidden', authServices.length === 0);
+      authGridEl.innerHTML = authServices.map(authServiceCard).join('');
+    }
   } catch (err) {
     // se reintenta en el siguiente ciclo de refresco
   }
@@ -371,22 +384,12 @@ logModal.addEventListener('click', (event) => {
   if (event.target === logModal) closeLogModal();
 });
 
-gridEl.addEventListener('click', async (event) => {
-  const button = event.target.closest('button[data-action]');
-  if (!button) return;
+async function handleActionClick(button, urlFor, extraLabel) {
   const { action, id, name } = button.dataset;
-  if (action === 'log') {
-    openLogModal(id, name);
-    return;
-  }
-  const isAuthAction = action === 'auth-start' || action === 'auth-stop';
-  const actionLabel = (action.endsWith('start') ? 'iniciar' : 'detener') + (isAuthAction ? ' authserver' : '');
-  const url = isAuthAction
-    ? `/api/servers/${id}/auth/${action === 'auth-start' ? 'start' : 'stop'}`
-    : `/api/servers/${id}/${action}`;
+  const actionLabel = (action === 'start' ? 'iniciar' : 'detener') + extraLabel;
   button.disabled = true;
   try {
-    const response = await fetch(url, { method: 'POST' });
+    const response = await fetch(urlFor(id, action), { method: 'POST' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       showFeedback(`No se pudo ${actionLabel} "${name}": ${data.detail || 'error desconocido'}`, true);
@@ -399,6 +402,22 @@ gridEl.addEventListener('click', async (event) => {
   } finally {
     button.disabled = false;
   }
+}
+
+gridEl.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  if (button.dataset.action === 'log') {
+    openLogModal(button.dataset.id, button.dataset.name);
+    return;
+  }
+  await handleActionClick(button, (id, action) => `/api/servers/${id}/${action}`, '');
+});
+
+authGridEl.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  await handleActionClick(button, (id, action) => `/api/servers/auth-services/${id}/${action}`, ' authserver');
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {

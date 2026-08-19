@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from app import models, schemas
 from app.deps import get_current_user
 from app.emulators import log_manager
+from app.emulators.auth_service import AuthServiceDriver
 from app.emulators.base import BaseEmulatorDriver, ProcessControlError
 from app.emulators.manager import EmulatorManager, get_manager
 from app.soap.client import SoapError
@@ -31,11 +32,6 @@ def list_servers(
                 "update_diff_ms": None,
             }
         )
-        auth_info = (
-            {**driver.get_auth_status(), **driver.get_auth_account_stats()}
-            if driver.config.enabled
-            else {"state": None, "accounts_total": None, "accounts_online": None}
-        )
         summaries.append(
             schemas.ServerSummary(
                 id=driver.config.id,
@@ -49,9 +45,7 @@ def list_servers(
                 memory_mb=info["memory_mb"],
                 players_online=info["players_online"],
                 update_diff_ms=info["update_diff_ms"],
-                auth_state=auth_info["state"],
-                accounts_total=auth_info["accounts_total"],
-                accounts_online=auth_info["accounts_online"],
+                auth_service_id=driver.config.auth_service_id,
             )
         )
 
@@ -103,28 +97,68 @@ def stop_server(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
-@router.post("/{instance_id}/auth/start")
-def start_auth_server(
-    instance_id: str,
+def _get_auth_service_or_404(auth_service_id: str, manager: EmulatorManager) -> AuthServiceDriver:
+    driver = manager.get_auth_service(auth_service_id)
+    if not driver:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Servicio de authserver no encontrado")
+    return driver
+
+
+@router.get("/auth-services", response_model=list[schemas.AuthServiceSummary])
+def list_auth_services(
     current_user: models.User = Depends(get_current_user),
     manager: EmulatorManager = Depends(get_manager),
 ):
-    driver = _get_driver_or_404(instance_id, manager)
+    linked_by_service: dict[str, list[str]] = {}
+    for driver in manager.list_drivers():
+        if driver.config.enabled:
+            linked_by_service.setdefault(driver.config.auth_service_id, []).append(driver.config.name)
+
+    summaries = []
+    for auth_driver in manager.list_auth_services():
+        cfg = auth_driver.config
+        if cfg.enabled:
+            status_info = auth_driver.get_status()
+            stats = auth_driver.get_account_stats()
+        else:
+            status_info = {"state": "offline"}
+            stats = {"accounts_total": None, "accounts_online": None}
+        summaries.append(
+            schemas.AuthServiceSummary(
+                id=cfg.id,
+                name=cfg.name,
+                enabled=cfg.enabled,
+                state=status_info["state"],
+                accounts_total=stats["accounts_total"],
+                accounts_online=stats["accounts_online"],
+                linked_instances=linked_by_service.get(cfg.id, []),
+            )
+        )
+    return summaries
+
+
+@router.post("/auth-services/{auth_service_id}/start")
+def start_auth_service(
+    auth_service_id: str,
+    current_user: models.User = Depends(get_current_user),
+    manager: EmulatorManager = Depends(get_manager),
+):
+    driver = _get_auth_service_or_404(auth_service_id, manager)
     try:
-        return driver.start_auth()
+        return driver.start()
     except ProcessControlError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
 
-@router.post("/{instance_id}/auth/stop")
-def stop_auth_server(
-    instance_id: str,
+@router.post("/auth-services/{auth_service_id}/stop")
+def stop_auth_service(
+    auth_service_id: str,
     current_user: models.User = Depends(get_current_user),
     manager: EmulatorManager = Depends(get_manager),
 ):
-    driver = _get_driver_or_404(instance_id, manager)
+    driver = _get_auth_service_or_404(auth_service_id, manager)
     try:
-        return driver.stop_auth()
+        return driver.stop()
     except ProcessControlError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 

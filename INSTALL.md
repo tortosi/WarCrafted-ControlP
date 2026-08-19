@@ -85,7 +85,8 @@ Cada instancia se define con variables numeradas usando el prefijo `INSTANCE_<N>
 | `INSTANCE_<N>_WORLD_PROCESS` | Nombre del proceso del worldserver a monitorizar |
 | `INSTANCE_<N>_AUTH_PROCESS` | Nombre del proceso del authserver |
 | `INSTANCE_<N>_START_CMD` | Ruta al ejecutable usado para iniciar el worldserver |
-| `INSTANCE_<N>_AUTH_START_CMD` | Ruta al ejecutable del authserver (opcional; sin ella, la tarjeta del authserver no puede arrancarlo) |
+| `INSTANCE_<N>_AUTH_START_CMD` | Ruta al ejecutable del authserver propio de esta instancia (opcional; se ignora si usas `AUTH_SERVICE_ID`, ver mas abajo) |
+| `INSTANCE_<N>_AUTH_SERVICE_ID` | Opcional: id de un `AUTH_SERVICE_<M>_*` para que esta instancia comparta authserver con otras, en vez de tener el suyo propio |
 | `INSTANCE_<N>_WORKDIR` | Directorio de trabajo al ejecutar `START_CMD`/`AUTH_START_CMD` |
 | `INSTANCE_<N>_SOAP_HOST` / `SOAP_PORT` | Host y puerto del servicio SOAP |
 | `INSTANCE_<N>_SOAP_USER` / `SOAP_PASS` | Credenciales de la cuenta GM habilitada para SOAP |
@@ -95,6 +96,8 @@ Cada instancia se define con variables numeradas usando el prefijo `INSTANCE_<N>
 | `INSTANCE_<N>_DB_AUTH` | Nombre de la base de datos de cuentas (por defecto `acore_auth`), para las cifras de la tarjeta del authserver |
 
 Consulta `.env.example` para ver un ejemplo completo con dos instancias (una AzerothCore y una Playerbots).
+
+**Authserver compartido:** si dos o mas reinos usan el mismo proceso authserver, en vez de definirlo por instancia declaralo una vez con `AUTH_SERVICE_<M>_NAME`/`ENABLED`/`PROCESS`/`START_CMD`/`WORKDIR`/`DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASS`/`DB_NAME`, y pon `INSTANCE_<N>_AUTH_SERVICE_ID=auth-service-<M>` en cada instancia que lo use. El dashboard muestra entonces una unica tarjeta de authserver con los reinos vinculados, en vez de una por reino. Ver ejemplo en `.env.example`.
 
 > **Importante:** si dos instancias comparten el mismo `WORLD_PROCESS` (p.ej. ambas usan el binario `worldserver`), el panel las distingue por su `WORKDIR`. Define siempre `INSTANCE_<N>_WORKDIR` con la ruta absoluta y distinta de cada instalacion; si se omite, el panel no puede garantizar que "Iniciar"/"Detener" actuen solo sobre esa instancia.
 

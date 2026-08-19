@@ -6,6 +6,22 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.14.0] - 2026-08-19
+
+### Cambiado
+- Rediseño del authserver: pasa de ser 1:1 por reino a un servicio propio,
+  referenciable por `INSTANCE_<N>_AUTH_SERVICE_ID`, que varios reinos pueden compartir
+  (`AUTH_SERVICE_<M>_*` en `.env`). El dashboard le dedica una única tarjeta por servicio
+  (no una por reino), con la lista de reinos vinculados. Sin `AUTH_SERVICE_ID`, cada reino
+  sigue teniendo su propio authserver implícito, igual que hasta ahora — no hace falta
+  tocar el `.env` de una instalación existente.
+- **Rotura de API**: `POST /api/servers/{id}/auth/start|stop` desaparecen; el control del
+  authserver pasa a `POST /api/servers/auth-services/{auth_service_id}/start|stop`. La
+  respuesta de `GET /api/servers` ya no lleva `auth_state`/`accounts_total`/
+  `accounts_online` (duplicaban esos datos por cada reino que comparte servicio); en su
+  lugar lleva `auth_service_id`, y esos tres campos ahora viven en la respuesta nueva de
+  `GET /api/servers/auth-services`.
+
 ## [0.13.0] - 2026-08-19
 
 ### Anadido

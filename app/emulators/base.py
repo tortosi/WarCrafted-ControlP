@@ -9,10 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import psutil
-import pymysql
 
 from app.config import DATA_DIR, get_settings
-from app.emulators import log_manager
+from app.emulators import log_manager, process_control
 from app.soap.client import SoapClient, SoapError
 
 logger = logging.getLogger(__name__)
@@ -46,6 +45,7 @@ class InstanceConfig:
     db_user: str
     db_pass: str
     db_characters: str
+    auth_service_id: str
     acore_logs_dir: str = ""
     log_categories: str = ""
     db_auth: str = "acore_auth"
@@ -77,12 +77,6 @@ class BaseEmulatorDriver(ABC):
 
     def _stopping_file(self) -> Path:
         return PID_DIR / f"{self.config.id}.stopping"
-
-    def _auth_pid_file(self) -> Path:
-        return PID_DIR / f"{self.config.id}-auth.pid"
-
-    def _auth_stopping_file(self) -> Path:
-        return PID_DIR / f"{self.config.id}-auth.stopping"
 
     def _log_instance_dir(self) -> Path:
         return self._logs_root / self.config.id
@@ -132,79 +126,17 @@ class BaseEmulatorDriver(ABC):
             return None
         return {"content": content, "truncated": truncated, "total_size_bytes": total_size_bytes}
 
-    def _read_pid(self, pid_file: Path | None = None) -> int | None:
-        pid_file = pid_file or self._pid_file()
-        if not pid_file.exists():
-            return None
-        try:
-            return int(pid_file.read_text().strip())
-        except (ValueError, OSError):
-            return None
+    def _read_pid(self) -> int | None:
+        return process_control.read_pid(self._pid_file())
 
-    def _write_pid(self, pid: int, pid_file: Path | None = None) -> None:
-        (pid_file or self._pid_file()).write_text(str(pid))
+    def _write_pid(self, pid: int) -> None:
+        process_control.write_pid(self._pid_file(), pid)
 
-    def _clear_pid(self, pid_file: Path | None = None) -> None:
-        (pid_file or self._pid_file()).unlink(missing_ok=True)
-
-    def _matches_process_name(self, proc: psutil.Process, process_name: str) -> bool:
-        """Identifica el proceso de ESTA instancia por nombre + WORKDIR, no cualquier
-        proceso con el mismo binario.
-
-        Varias instancias pueden compartir el mismo binario (p.ej. "worldserver"); el
-        directorio de trabajo (WORKDIR) es lo unico que las distingue de forma fiable.
-        """
-        target = process_name.lower()
-        try:
-            if proc.status() == psutil.STATUS_ZOMBIE:
-                return False
-            name = (proc.name() or "").lower()
-            # El "comm" del proceso puede truncarse o ser el del interprete
-            # (p.ej. wrappers/scripts); si no coincide, se prueba con cmdline.
-            if target not in name and target not in " ".join(proc.cmdline()).lower():
-                return False
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            return False
-
-        if self.config.workdir:
-            try:
-                proc_cwd = Path(proc.cwd()).resolve()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                return False
-            if proc_cwd != Path(self.config.workdir).resolve():
-                return False
-
-        return True
-
-    def _matches_this_instance(self, proc: psutil.Process) -> bool:
-        return self._matches_process_name(proc, self.config.world_process)
-
-    def _matches_auth_process(self, proc: psutil.Process) -> bool:
-        return self._matches_process_name(proc, self.config.auth_process)
-
-    def _find_process(self, matcher, pid_file: Path) -> psutil.Process | None:
-        pid = self._read_pid(pid_file)
-        if pid is not None:
-            if psutil.pid_exists(pid):
-                try:
-                    proc = psutil.Process(pid)
-                    if matcher(proc):
-                        return proc
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-            self._clear_pid(pid_file)
-
-        for proc in psutil.process_iter():
-            if matcher(proc):
-                self._write_pid(proc.pid, pid_file)
-                return proc
-        return None
+    def _clear_pid(self) -> None:
+        process_control.clear_pid(self._pid_file())
 
     def find_process(self) -> psutil.Process | None:
-        return self._find_process(self._matches_this_instance, self._pid_file())
-
-    def find_auth_process(self) -> psutil.Process | None:
-        return self._find_process(self._matches_auth_process, self._auth_pid_file())
+        return process_control.find_process(self._pid_file(), self.config.world_process, self.config.workdir)
 
     def _is_ready(self) -> bool:
         """Ya se puede entrar al reino (mundo, red y SOAP cargados), no solo que el proceso exista."""
@@ -250,16 +182,6 @@ class BaseEmulatorDriver(ABC):
             "cpu_percent_host": cpu_percent_host,
             "memory_mb": memory_mb,
         }
-
-    def get_auth_status(self) -> dict:
-        """Sin SOAP ni consola para el authserver: 'online' es solo que el proceso exista."""
-        proc = self.find_auth_process()
-        if not proc:
-            self._auth_stopping_file().unlink(missing_ok=True)
-            return {"state": "offline", "pid": None}
-        if self._auth_stopping_file().exists():
-            return {"state": "stopping", "pid": proc.pid}
-        return {"state": "online", "pid": proc.pid}
 
     def execute_soap_command(self, command: str) -> str:
         return self.soap.execute(command)
@@ -408,77 +330,6 @@ class BaseEmulatorDriver(ABC):
                 "detail": f"El comando SOAP fallo ({exc}); se envio senal de apagado directamente al proceso (PID {proc.pid}).",
             }
 
-    def start_auth(self) -> dict:
-        """Variante minima de start(): sin SOAP, sin log de consola (el authserver no
-        expone ninguna senal de listo mas alla de que el proceso siga vivo)."""
-        existing = self.find_auth_process()
-        if existing:
-            return {"success": True, "detail": "El authserver ya esta en ejecucion.", "pid": existing.pid}
-
-        if not self.config.auth_start_cmd:
-            raise ProcessControlError("No hay AUTH_START_CMD configurado para esta instancia.")
-
-        workdir = Path(self.config.workdir) if self.config.workdir else None
-        if workdir and not workdir.is_dir():
-            raise ProcessControlError(f"El directorio de trabajo (WORKDIR) no existe: {workdir}")
-
-        try:
-            args = shlex.split(self.config.auth_start_cmd)
-        except ValueError as exc:
-            raise ProcessControlError(f"AUTH_START_CMD invalido: {exc}") from exc
-
-        self._auth_stopping_file().unlink(missing_ok=True)
-
-        try:
-            process = subprocess.Popen(
-                args,
-                cwd=str(workdir) if workdir else None,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-        except OSError as exc:
-            logger.error("Fallo al iniciar el authserver de '%s': %s", self.config.name, exc)
-            raise ProcessControlError(f"No se pudo ejecutar '{self.config.auth_start_cmd}': {exc}") from exc
-
-        time.sleep(0.5)
-        return_code = process.poll()
-        if return_code is not None:
-            message = f"El authserver finalizo inmediatamente (codigo {return_code})."
-            logger.error("Fallo al iniciar el authserver de '%s': %s", self.config.name, message)
-            raise ProcessControlError(message)
-
-        self._write_pid(process.pid, self._auth_pid_file())
-        logger.info("Authserver de '%s' iniciado con PID %s", self.config.name, process.pid)
-        return {"success": True, "detail": "Authserver iniciado correctamente.", "pid": process.pid}
-
-    def stop_auth(self) -> dict:
-        """Sin SOAP para el authserver: SIGTERM y, si no responde en 5s, SIGKILL en la
-        misma llamada (a diferencia de stop(), no hace falta un segundo clic)."""
-        proc = self.find_auth_process()
-        if not proc:
-            self._auth_stopping_file().unlink(missing_ok=True)
-            return {"success": False, "detail": "El authserver no estaba en ejecucion."}
-
-        self._auth_stopping_file().touch()
-        try:
-            proc.terminate()
-            _, alive = psutil.wait_procs([proc], timeout=5)
-            if alive:
-                proc.kill()
-                detail = f"El authserver (PID {proc.pid}) no respondio a la señal de apagado; se forzo el cierre (SIGKILL)."
-            else:
-                detail = f"Authserver detenido (PID {proc.pid})."
-        except (psutil.NoSuchProcess, psutil.AccessDenied) as exc:
-            self._auth_stopping_file().unlink(missing_ok=True)
-            logger.error("Fallo al detener el authserver de '%s': %s", self.config.name, exc)
-            raise ProcessControlError(f"No se pudo detener el authserver (PID {proc.pid}): {exc}") from exc
-        self._clear_pid(self._auth_pid_file())
-        self._auth_stopping_file().unlink(missing_ok=True)
-        logger.info("Authserver de '%s' detenido (PID %s): %s", self.config.name, proc.pid, detail)
-        return {"success": True, "detail": detail}
-
     @abstractmethod
     def get_online_players(self) -> int | None:
         """Numero de jugadores conectados segun el esquema del emulador."""
@@ -489,25 +340,3 @@ class BaseEmulatorDriver(ABC):
         status["players_online"] = self.get_online_players() if online else None
         status["update_diff_ms"] = self.get_update_diff_ms() if online else None
         return status
-
-    def get_auth_account_stats(self) -> dict:
-        """Cuentas totales y conectadas (acore_auth.account); None si la BD no responde."""
-        cfg = self.config
-        try:
-            conn = pymysql.connect(
-                host=cfg.db_host,
-                port=cfg.db_port,
-                user=cfg.db_user,
-                password=cfg.db_pass,
-                database=cfg.db_auth,
-                connect_timeout=3,
-            )
-            with conn:
-                with conn.cursor() as cursor:
-                    cursor.execute("SELECT COUNT(*) FROM account")
-                    total = cursor.fetchone()[0]
-                    cursor.execute("SELECT COUNT(*) FROM account WHERE online > 0")
-                    online = cursor.fetchone()[0]
-                    return {"accounts_total": int(total), "accounts_online": int(online)}
-        except Exception:
-            return {"accounts_total": None, "accounts_online": None}

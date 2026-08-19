@@ -46,10 +46,18 @@ class ServerSummary(BaseModel):
     memory_mb: float | None = None
     players_online: int | None = None
     update_diff_ms: int | None = None
-    auth_state: Literal["offline", "online", "stopping"] | None = None
+    auth_service_id: str | None = None
+    error: str | None = None
+
+
+class AuthServiceSummary(BaseModel):
+    id: str
+    name: str
+    enabled: bool
+    state: Literal["offline", "online", "stopping"]
     accounts_total: int | None = None
     accounts_online: int | None = None
-    error: str | None = None
+    linked_instances: list[str] = []
 
 
 class LogRun(BaseModel):
