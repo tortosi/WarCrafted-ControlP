@@ -55,6 +55,8 @@ class LogRun(BaseModel):
 
 class LogContent(BaseModel):
     content: str
+    truncated: bool
+    total_size_bytes: int
 
 
 class SystemStats(BaseModel):

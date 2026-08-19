@@ -5,6 +5,10 @@ from pathlib import Path
 
 CONSOLE_CATEGORY = "worldserver"
 
+# Vista previa acotada: leer solo el final del archivo evita cargar logs de
+# varios MB/GB enteros en memoria y congelar el navegador al renderizarlos.
+PREVIEW_MAX_BYTES = 512_000
+
 NATIVE_CATEGORIES: dict[str, str] = {
     "server": "Server.log",
     "errors": "Errors.log",
@@ -113,6 +117,26 @@ def list_runs(instance_dir: Path) -> list[dict]:
         )
     runs.sort(key=lambda r: r["started_at"], reverse=True)
     return runs
+
+
+def read_preview(path: Path, max_bytes: int = PREVIEW_MAX_BYTES) -> tuple[str, bool, int]:
+    """Lee como mucho los ultimos `max_bytes` de `path` sin cargar el archivo entero.
+
+    Devuelve (contenido, truncado, tamano_total_en_bytes). El seek desde el
+    final hace que el coste de lectura no dependa del tamano del archivo.
+    """
+    size = path.stat().st_size
+    truncated = size > max_bytes
+    with path.open("rb") as fh:
+        if truncated:
+            fh.seek(size - max_bytes)
+        raw = fh.read()
+    if truncated:
+        # la primera linea puede estar cortada a mitad; se descarta
+        newline = raw.find(b"\n")
+        if newline != -1:
+            raw = raw[newline + 1 :]
+    return raw.decode("utf-8", errors="replace"), truncated, size
 
 
 def tail_file(path: Path, lines: int = 20) -> str:

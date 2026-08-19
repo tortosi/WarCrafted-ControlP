@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 
 from app import models, schemas
 from app.deps import get_current_user
@@ -108,11 +109,28 @@ def get_server_log(
     current_user: models.User = Depends(get_current_user),
     manager: EmulatorManager = Depends(get_manager),
 ):
+    """Vista previa acotada (ver `log_manager.PREVIEW_MAX_BYTES`); para el archivo
+    completo usa el endpoint de descarga, que lo sirve directo desde disco."""
     driver = _get_driver_or_404(instance_id, manager)
-    content = driver.read_log_run(filename)
-    if content is None:
+    preview = driver.read_log_run_preview(filename)
+    if preview is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo de log no encontrado")
-    return schemas.LogContent(content=content)
+    return schemas.LogContent(**preview)
+
+
+@router.get("/{instance_id}/logs/{filename}/download")
+def download_server_log(
+    instance_id: str,
+    filename: str,
+    current_user: models.User = Depends(get_current_user),
+    manager: EmulatorManager = Depends(get_manager),
+):
+    driver = _get_driver_or_404(instance_id, manager)
+    path = driver.log_run_path(filename)
+    if path is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo de log no encontrado")
+    download_name = filename.removesuffix(".log") + ".txt"
+    return FileResponse(path, media_type="text/plain", filename=download_name)
 
 
 @router.post("/{instance_id}/command", response_model=schemas.CommandResult)

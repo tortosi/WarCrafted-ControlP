@@ -58,11 +58,16 @@ anterior, tomada justo antes de lanzar el proceso nuevo.
 El boton **Logs** de cada tarjeta abre una ventana con:
 
 - Un desplegable con todos los arranques guardados (mas reciente primero,
-  identificados por categoria y fecha).
+  identificados por categoria y fecha). Por rendimiento, el visor solo
+  carga el ultimo medio MB de cada archivo; si el archivo es mas grande,
+  aparece un aviso encima del visor.
 - **Ver en vivo**: sigue en tiempo real el log de consola del arranque
-  activo, mientras la instancia sigue en ejecucion.
-- **Copiar**: copia el contenido mostrado al portapapeles.
-- **Descargar**: guarda el contenido mostrado como fichero `.txt`.
+  activo, mientras la instancia sigue en ejecucion (mantiene como maximo
+  las ultimas 2000 lineas en pantalla).
+- **Copiar**: copia al portapapeles lo que se ve en el visor (si el archivo
+  esta recortado, copia solo esa parte).
+- **Descargar**: descarga el archivo completo (no solo lo mostrado en
+  pantalla) como `.txt`.
 
 Por defecto se conservan como maximo 15 arranques por categoria, y se
 purgan los que superen 7 dias — ajustable con `LOGS_RETENTION_DAYS` y

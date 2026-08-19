@@ -6,6 +6,20 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.6.1] - 2026-08-19
+
+### Corregido
+- Abrir un log grande en el modal **Logs** del dashboard colgaba la pestaña
+  del navegador: se cargaba y renderizaba el archivo entero. Ahora
+  `GET /api/servers/{id}/logs/{filename}` solo devuelve el ultimo medio MB
+  (`log_manager.PREVIEW_MAX_BYTES`), leido con un `seek` desde el final del
+  archivo, y avisa en el modal si el contenido esta recortado. El boton
+  **Descargar** ya no depende de lo cargado en el navegador: enlaza
+  directamente a `GET /api/servers/{id}/logs/{filename}/download`, que sirve
+  el archivo completo desde disco. En "ver en vivo" tambien se limita el
+  buffer a las ultimas 2000 lineas para no acumular memoria sin fin en
+  sesiones largas.
+
 ## [0.6.0] - 2026-08-19
 
 ### Anadido

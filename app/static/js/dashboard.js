@@ -129,6 +129,7 @@ const logModalSelect = document.getElementById('log-modal-select');
 const logModalLiveBtn = document.getElementById('log-modal-live');
 const logModalCopyBtn = document.getElementById('log-modal-copy');
 const logModalDownloadBtn = document.getElementById('log-modal-download');
+const logModalTruncated = document.getElementById('log-modal-truncated');
 const logModalContent = document.getElementById('log-modal-content');
 
 const LOG_CATEGORY_LABELS = {
@@ -140,9 +141,14 @@ const LOG_CATEGORY_LABELS = {
   chat: 'Chat',
 };
 
+// Limite de lineas en "ver en vivo": sin esto, una sesion larga acumula el
+// contenido en memoria/DOM sin fin y el navegador acaba igual de bloqueado
+// que con un archivo historico gigante.
+const LIVE_MAX_LINES = 2000;
+
 let logInstanceId = null;
-let logInstanceName = null;
 let logSocket = null;
+let liveLines = [];
 
 function logCategoryLabel(category) {
   return LOG_CATEGORY_LABELS[category] || category;
@@ -152,9 +158,33 @@ function logRunLabel(run) {
   return `${logCategoryLabel(run.category)} — ${run.started_at.replace('_', ' ')}`;
 }
 
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function updateDownloadLink(filename) {
+  if (filename) {
+    logModalDownloadBtn.href = `/api/servers/${logInstanceId}/logs/${encodeURIComponent(filename)}/download`;
+    logModalDownloadBtn.classList.remove('pointer-events-none', 'opacity-50');
+  } else {
+    logModalDownloadBtn.href = '#';
+    logModalDownloadBtn.classList.add('pointer-events-none', 'opacity-50');
+  }
+}
+
 function appendLogLine(line) {
   const atBottom = logModalContent.scrollHeight - logModalContent.scrollTop - logModalContent.clientHeight < 40;
-  logModalContent.textContent += (logModalContent.textContent ? '\n' : '') + line;
+  liveLines.push(line);
+  if (liveLines.length > LIVE_MAX_LINES) liveLines.splice(0, liveLines.length - LIVE_MAX_LINES);
+  logModalContent.textContent = liveLines.join('\n');
   if (atBottom) logModalContent.scrollTop = logModalContent.scrollHeight;
 }
 
@@ -174,6 +204,8 @@ function startLiveLog() {
   logModalSelect.disabled = true;
   logModalLiveBtn.textContent = 'Detener vivo';
   logModalLiveBtn.classList.add('bg-brand-600', 'hover:bg-brand-700', 'text-white', 'border-transparent');
+  logModalTruncated.classList.add('hidden');
+  liveLines = [];
   logModalContent.textContent = '';
 
   logSocket.addEventListener('message', (event) => appendLogLine(event.data));
@@ -182,15 +214,24 @@ function startLiveLog() {
 
 async function loadSelectedLog() {
   if (!logInstanceId || !logModalSelect.value) return;
+  const filename = logModalSelect.value;
+  updateDownloadLink(filename);
+  logModalTruncated.classList.add('hidden');
   logModalContent.textContent = 'Cargando...';
   try {
-    const response = await fetch(`/api/servers/${logInstanceId}/logs/${encodeURIComponent(logModalSelect.value)}`);
+    const response = await fetch(`/api/servers/${logInstanceId}/logs/${encodeURIComponent(filename)}`);
     if (!response.ok) {
       logModalContent.textContent = 'No se pudo cargar este archivo de log.';
       return;
     }
     const data = await response.json();
     logModalContent.textContent = data.content || '(archivo vacio)';
+    if (data.truncated) {
+      logModalTruncated.textContent =
+        `Mostrando solo el final del archivo (${formatBytes(data.total_size_bytes)} en total). `
+        + 'Descarga el archivo completo para verlo entero.';
+      logModalTruncated.classList.remove('hidden');
+    }
   } catch (err) {
     logModalContent.textContent = 'Error de conexion al cargar el log.';
   }
@@ -198,10 +239,11 @@ async function loadSelectedLog() {
 
 async function openLogModal(id, name) {
   logInstanceId = id;
-  logInstanceName = name;
   logModalTitle.textContent = `Logs — ${name}`;
   logModalContent.textContent = 'Cargando...';
+  logModalTruncated.classList.add('hidden');
   logModalSelect.innerHTML = '';
+  updateDownloadLink(null);
   logModal.classList.remove('hidden');
 
   try {
@@ -223,7 +265,6 @@ async function openLogModal(id, name) {
 function closeLogModal() {
   stopLiveLog();
   logInstanceId = null;
-  logInstanceName = null;
   logModal.classList.add('hidden');
 }
 
@@ -250,17 +291,6 @@ logModalCopyBtn.addEventListener('click', async () => {
   } catch (err) {
     showFeedback('No se pudo copiar el log al portapapeles.', true);
   }
-});
-
-logModalDownloadBtn.addEventListener('click', () => {
-  const filename = logModalSelect.value || `${logInstanceName || 'log'}.txt`;
-  const blob = new Blob([logModalContent.textContent], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename.endsWith('.log') ? filename.replace(/\.log$/, '.txt') : `${filename}.txt`;
-  link.click();
-  URL.revokeObjectURL(url);
 });
 
 document.getElementById('log-modal-close').addEventListener('click', closeLogModal);

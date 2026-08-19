@@ -84,14 +84,21 @@ class BaseEmulatorDriver(ABC):
     def list_log_runs(self) -> list[dict]:
         return log_manager.list_runs(self._log_instance_dir())
 
-    def read_log_run(self, filename: str) -> str | None:
+    def log_run_path(self, filename: str) -> Path | None:
         path = log_manager.resolve_safe(self._log_instance_dir(), filename)
         if path is None or not path.is_file():
             return None
+        return path
+
+    def read_log_run_preview(self, filename: str) -> dict | None:
+        path = self.log_run_path(filename)
+        if path is None:
+            return None
         try:
-            return path.read_text(errors="replace")
+            content, truncated, total_size_bytes = log_manager.read_preview(path)
         except OSError:
             return None
+        return {"content": content, "truncated": truncated, "total_size_bytes": total_size_bytes}
 
     def _read_pid(self) -> int | None:
         pid_file = self._pid_file()
