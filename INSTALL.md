@@ -174,6 +174,20 @@ sudo systemctl enable --now warcrafted-controlp
 
 `Restart=always` (no `on-failure`) es importante: la autoactualizacion del panel (ver mas abajo) reinicia el proceso a proposito para aplicar cambios, y necesita que systemd lo vuelva a levantar siempre, no solo cuando detecta un fallo.
 
+## HTTPS (recomendado)
+
+Sirve el panel detras de un proxy inverso con TLS en vez de exponer uvicorn directamente. Sin HTTPS (o sin acceder como `localhost`), los navegadores consideran la pagina un "contexto inseguro" y bloquean funciones como las notificaciones de escritorio (ver plugin `web-notifications`) sin llegar a preguntar.
+
+- **Sin proxy inverso todavia:** [Caddy](https://caddyfile.dev/) gestiona el certificado (Let's Encrypt) solo, con un `Caddyfile` de 3 lineas:
+  ```
+  panel.tudominio.com {
+    reverse_proxy 127.0.0.1:8000
+  }
+  ```
+- **Ya tienes Apache o nginx con certbot para otros sitios:** anade un vhost mas con el mismo patron que ya uses (reverse proxy a `127.0.0.1:8000`, incluyendo `/ws/` para los WebSockets de consola y logs en vivo) y pide el certificado con `certbot --apache -d panel.tudominio.com` (o `--nginx`).
+
+Cuando el panel ya responda por HTTPS, pon `COOKIE_SECURE=true` en `.env` y reinicia — antes de eso rompe el login, porque el navegador no envia una cookie `Secure` por HTTP.
+
 ## Autoactualizacion del panel
 
 Con el token de GitHub configurado (ver "Instalacion de plugins" arriba; el mismo token sirve para ambos repos si le das acceso a los dos), entra en **Tienda** como administrador. Arriba del catalogo aparece la tarjeta **Panel principal** con la version instalada y, si hay una distinta en `WarCrafted-ControlP`, un boton **Actualizar**:

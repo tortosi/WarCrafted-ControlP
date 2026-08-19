@@ -6,6 +6,13 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+### Documentado
+- `INSTALL.md`: nueva seccion "HTTPS (recomendado)" — sin HTTPS (ni acceder
+  como `localhost`) el navegador bloquea funciones como las notificaciones
+  de escritorio sin avisar. Ejemplo con Caddy y con Apache/nginx + certbot,
+  y el aviso de activar `COOKIE_SECURE=true` solo despues de tener el panel
+  detras de HTTPS.
+
 ## [0.10.0] - 2026-08-19
 
 ### Anadido
