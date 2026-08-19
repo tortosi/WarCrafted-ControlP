@@ -26,6 +26,13 @@ function statCard(label, value, sub) {
     </div>`;
 }
 
+function diffColorClass(ms) {
+  if (ms == null) return 'text-gray-400';
+  if (ms < 50) return 'text-emerald-500';
+  if (ms <= 150) return 'text-amber-500';
+  return 'text-rose-500';
+}
+
 const SERVER_STATE_META = {
   offline: { label: 'Detenido', dot: 'bg-gray-400' },
   starting: { label: 'Arrancando...', dot: 'bg-amber-500 animate-pulse' },
@@ -59,7 +66,7 @@ function serverCard(server) {
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-100">${typeLabel}</span>
       </div>
-      <div class="grid grid-cols-3 gap-2 text-center text-sm">
+      <div class="grid grid-cols-4 gap-2 text-center text-sm">
         <div>
           <p class="text-gray-400 text-xs" title="Normalizado a 1 nucleo = 100%; un proceso multihilo puede superar el 100%.">CPU</p>
           <p class="font-medium">${server.cpu_percent != null ? server.cpu_percent + '%' : '-'}</p>
@@ -72,6 +79,10 @@ function serverCard(server) {
         <div>
           <p class="text-gray-400 text-xs">Jugadores</p>
           <p class="font-medium">${server.players_online != null ? server.players_online : '-'}</p>
+        </div>
+        <div>
+          <p class="text-gray-400 text-xs" title="Retraso del bucle principal del worldserver (comando SOAP 'server info').">Diff</p>
+          <p class="font-medium ${diffColorClass(server.update_diff_ms)}">${server.update_diff_ms != null ? server.update_diff_ms + ' ms' : '-'}</p>
         </div>
       </div>
       <div class="flex flex-col gap-2 mt-1">

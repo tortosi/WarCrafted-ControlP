@@ -1,4 +1,5 @@
 import logging
+import re
 import shlex
 import subprocess
 import threading
@@ -16,6 +17,8 @@ from app.soap.client import SoapClient, SoapError
 logger = logging.getLogger(__name__)
 
 PID_DIR = DATA_DIR / "pids"
+
+_UPDATE_DIFF_RE = re.compile(r"Update time diff:\s*(\d+)ms")
 
 
 class ProcessControlError(Exception):
@@ -229,6 +232,15 @@ class BaseEmulatorDriver(ABC):
     def execute_soap_command(self, command: str) -> str:
         return self.soap.execute(command)
 
+    def get_update_diff_ms(self) -> int | None:
+        """Retraso del bucle principal (comando GM 'server info'); None si SOAP no responde."""
+        try:
+            output = self.execute_soap_command("server info")
+        except SoapError:
+            return None
+        match = _UPDATE_DIFF_RE.search(output)
+        return int(match.group(1)) if match else None
+
     def start(self) -> dict:
         existing = self.find_process()
         if existing:
@@ -370,5 +382,7 @@ class BaseEmulatorDriver(ABC):
 
     def get_status(self) -> dict:
         status = self.get_process_status()
-        status["players_online"] = self.get_online_players() if status["state"] == "online" else None
+        online = status["state"] == "online"
+        status["players_online"] = self.get_online_players() if online else None
+        status["update_diff_ms"] = self.get_update_diff_ms() if online else None
         return status

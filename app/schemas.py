@@ -45,6 +45,7 @@ class ServerSummary(BaseModel):
     cpu_percent_host: float | None = None
     memory_mb: float | None = None
     players_online: int | None = None
+    update_diff_ms: int | None = None
     error: str | None = None
 
 

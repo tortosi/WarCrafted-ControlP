@@ -6,6 +6,16 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.8.0] - 2026-08-19
+
+### Anadido
+- Nueva metrica **Diff** en cada tarjeta de instancia: el retraso del bucle
+  principal del `worldserver` (comando SOAP `server info`, campo "Update
+  time diff"), en milisegundos, con color segun el rango (verde menos de
+  50ms, ambar 50-150ms, rojo mas de 150ms). Solo se consulta con la instancia En
+  linea; no anade peticiones nuevas, viaja en la misma respuesta de
+  `GET /api/servers` que ya se pedia cada 5 segundos.
+
 ## [0.7.1] - 2026-08-19
 
 ### Corregido

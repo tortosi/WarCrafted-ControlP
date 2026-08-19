@@ -28,6 +28,7 @@ def list_servers(
                 "cpu_percent_host": None,
                 "memory_mb": None,
                 "players_online": None,
+                "update_diff_ms": None,
             }
         )
         summaries.append(
@@ -42,6 +43,7 @@ def list_servers(
                 cpu_percent_host=info["cpu_percent_host"],
                 memory_mb=info["memory_mb"],
                 players_online=info["players_online"],
+                update_diff_ms=info["update_diff_ms"],
             )
         )
 
