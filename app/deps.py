@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.database import SessionLocal
+from app.emulators.manager import get_manager
 from app.security import decode_access_token
 
 _login_attempts = defaultdict(list)
@@ -78,6 +79,34 @@ def require_admin(current_user: models.User = Depends(get_current_user)) -> mode
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requiere permisos de administrador")
     return current_user
+
+
+def get_servers_snapshot() -> list[dict]:
+    """Estado actual (CPU/RAM/jugadores/diff) de las instancias habilitadas.
+
+    Pensada para tareas en segundo plano de plugins (hilos propios, sin
+    request HTTP ni usuario autenticado) que necesiten leer estos datos
+    igual que ya hace GET /api/servers, sin acceder directamente a
+    EmulatorManager (fuera del contrato de importaciones de los plugins).
+    """
+    snapshot = []
+    for driver in get_manager().list_drivers():
+        if not driver.config.enabled:
+            continue
+        status_info = driver.get_status()
+        snapshot.append(
+            {
+                "id": driver.config.id,
+                "name": driver.config.name,
+                "state": status_info["state"],
+                "cpu_percent": status_info["cpu_percent"],
+                "cpu_percent_host": status_info["cpu_percent_host"],
+                "memory_mb": status_info["memory_mb"],
+                "players_online": status_info["players_online"],
+                "update_diff_ms": status_info["update_diff_ms"],
+            }
+        )
+    return snapshot
 
 
 def get_current_user_ws(token: str | None, db: Session) -> models.User | None:

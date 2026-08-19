@@ -6,6 +6,14 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.11.0] - 2026-08-19
+
+### Anadido
+- Nueva funcion `app.deps.get_servers_snapshot()`: da a los plugins el mismo
+  estado (CPU/RAM/jugadores/diff) que ya devuelve `GET /api/servers`, pero
+  callable desde una tarea en segundo plano propia (sin request HTTP ni
+  usuario), sin tener que importar `EmulatorManager` directamente.
+
 ### Documentado
 - `INSTALL.md`: nueva seccion "HTTPS (recomendado)" — sin HTTPS (ni acceder
   como `localhost`) el navegador bloquea funciones como las notificaciones
