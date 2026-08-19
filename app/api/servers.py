@@ -31,6 +31,11 @@ def list_servers(
                 "update_diff_ms": None,
             }
         )
+        auth_info = (
+            {**driver.get_auth_status(), **driver.get_auth_account_stats()}
+            if driver.config.enabled
+            else {"state": None, "accounts_total": None, "accounts_online": None}
+        )
         summaries.append(
             schemas.ServerSummary(
                 id=driver.config.id,
@@ -44,6 +49,9 @@ def list_servers(
                 memory_mb=info["memory_mb"],
                 players_online=info["players_online"],
                 update_diff_ms=info["update_diff_ms"],
+                auth_state=auth_info["state"],
+                accounts_total=auth_info["accounts_total"],
+                accounts_online=auth_info["accounts_online"],
             )
         )
 
@@ -91,6 +99,32 @@ def stop_server(
     driver = _get_driver_or_404(instance_id, manager)
     try:
         return driver.stop()
+    except ProcessControlError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@router.post("/{instance_id}/auth/start")
+def start_auth_server(
+    instance_id: str,
+    current_user: models.User = Depends(get_current_user),
+    manager: EmulatorManager = Depends(get_manager),
+):
+    driver = _get_driver_or_404(instance_id, manager)
+    try:
+        return driver.start_auth()
+    except ProcessControlError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+
+
+@router.post("/{instance_id}/auth/stop")
+def stop_auth_server(
+    instance_id: str,
+    current_user: models.User = Depends(get_current_user),
+    manager: EmulatorManager = Depends(get_manager),
+):
+    driver = _get_driver_or_404(instance_id, manager)
+    try:
+        return driver.stop_auth()
     except ProcessControlError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 

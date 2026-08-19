@@ -46,6 +46,9 @@ class ServerSummary(BaseModel):
     memory_mb: float | None = None
     players_online: int | None = None
     update_diff_ms: int | None = None
+    auth_state: Literal["offline", "online", "stopping"] | None = None
+    accounts_total: int | None = None
+    accounts_online: int | None = None
     error: str | None = None
 
 

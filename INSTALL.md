@@ -85,12 +85,14 @@ Cada instancia se define con variables numeradas usando el prefijo `INSTANCE_<N>
 | `INSTANCE_<N>_WORLD_PROCESS` | Nombre del proceso del worldserver a monitorizar |
 | `INSTANCE_<N>_AUTH_PROCESS` | Nombre del proceso del authserver |
 | `INSTANCE_<N>_START_CMD` | Ruta al ejecutable usado para iniciar el worldserver |
-| `INSTANCE_<N>_WORKDIR` | Directorio de trabajo al ejecutar `START_CMD` |
+| `INSTANCE_<N>_AUTH_START_CMD` | Ruta al ejecutable del authserver (opcional; sin ella, la tarjeta del authserver no puede arrancarlo) |
+| `INSTANCE_<N>_WORKDIR` | Directorio de trabajo al ejecutar `START_CMD`/`AUTH_START_CMD` |
 | `INSTANCE_<N>_SOAP_HOST` / `SOAP_PORT` | Host y puerto del servicio SOAP |
 | `INSTANCE_<N>_SOAP_USER` / `SOAP_PASS` | Credenciales de la cuenta GM habilitada para SOAP |
 | `INSTANCE_<N>_DB_HOST` / `DB_PORT` | Host y puerto de la base de datos MySQL/MariaDB |
 | `INSTANCE_<N>_DB_USER` / `DB_PASS` | Credenciales de solo lectura para la base de datos |
 | `INSTANCE_<N>_DB_CHARACTERS` | Nombre de la base de datos `characters` del emulador |
+| `INSTANCE_<N>_DB_AUTH` | Nombre de la base de datos de cuentas (por defecto `acore_auth`), para las cifras de la tarjeta del authserver |
 
 Consulta `.env.example` para ver un ejemplo completo con dos instancias (una AzerothCore y una Playerbots).
 

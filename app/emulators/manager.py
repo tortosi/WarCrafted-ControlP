@@ -55,6 +55,7 @@ def _load_instance_configs() -> list[InstanceConfig]:
                     world_process=env("WORLD_PROCESS", "worldserver"),
                     auth_process=env("AUTH_PROCESS", "authserver"),
                     start_cmd=env("START_CMD"),
+                    auth_start_cmd=env("AUTH_START_CMD"),
                     workdir=env("WORKDIR"),
                     soap_host=env("SOAP_HOST", "127.0.0.1"),
                     soap_port=int(env("SOAP_PORT") or "7878"),
@@ -67,6 +68,7 @@ def _load_instance_configs() -> list[InstanceConfig]:
                     db_characters=env("DB_CHARACTERS"),
                     acore_logs_dir=env("ACORE_LOGS_DIR"),
                     log_categories=env("LOG_CATEGORIES"),
+                    db_auth=env("DB_AUTH", "acore_auth"),
                 )
             )
         except ValueError as exc:

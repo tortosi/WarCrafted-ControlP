@@ -50,6 +50,15 @@ Cada tarjeta incluye cuatro acciones:
 | **Consola** | Abre la consola GM interactiva de esa instancia. |
 | **Logs** | Abre el historico de logs de esa instancia (ver siguiente seccion). |
 
+### Tarjeta del authserver
+
+A la izquierda de cada tarjeta de instancia aparece una segunda tarjeta para su authserver,
+con **Cuentas creadas** y **Cuentas conectadas** (de la base de datos configurada en
+`INSTANCE_<N>_DB_AUTH`) y botones **Iniciar**/**Detener**. El authserver no tiene consola SOAP
+ni log propio en el panel, asi que su estado es solo Detenido/En linea (el proceso existe o
+no) y su parada es siempre inmediata: SIGTERM y, si no responde en 5 segundos, SIGKILL
+directamente (sin el paso intermedio de "Forzar detencion" del worldserver).
+
 ### Historico de logs y "ver en vivo"
 
 Cada vez que arrancas una instancia, el panel guarda la salida de consola

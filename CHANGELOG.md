@@ -6,6 +6,18 @@ El formato se basa en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/
 
 ## [Sin publicar]
 
+## [0.13.0] - 2026-08-19
+
+### Anadido
+- Tarjeta del authserver en el dashboard, a la izquierda de la del worldserver de cada
+  instancia: arrancar/parar (`AUTH_START_CMD` en `.env`) y cifras de cuentas creadas/conectadas
+  (`DB_AUTH`, `acore_auth` por defecto). El authserver no tiene SOAP ni consola, asi que su
+  parada es siempre SIGTERM con escalada a SIGKILL en la misma llamada (sin el paso intermedio
+  "Forzar detencion" que si tiene el worldserver).
+- Nueva funcion `app.deps.get_instance_etc_dir()`, mismo patron que
+  `get_instance_modules_conf_dir()` pero para el propio `etc/` (worldserver.conf/
+  authserver.conf).
+
 ## [0.12.0] - 2026-08-19
 
 ### Anadido

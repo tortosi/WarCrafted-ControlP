@@ -125,6 +125,19 @@ def get_instance_modules_conf_dir(instance_id: str) -> Path | None:
     return conf_dir if conf_dir.is_dir() else None
 
 
+def get_instance_etc_dir(instance_id: str) -> Path | None:
+    """Directorio etc/ de una instancia habilitada (padre de etc/modules/), o None si no existe.
+
+    Da acceso a worldserver.conf/authserver.conf, separado de
+    get_instance_modules_conf_dir() porque un plugin puede querer solo uno de los dos.
+    """
+    driver = get_manager().get_driver(instance_id)
+    if not driver or not driver.config.enabled or not driver.config.workdir:
+        return None
+    etc_dir = Path(driver.config.workdir).parent / "etc"
+    return etc_dir if etc_dir.is_dir() else None
+
+
 def reload_instance_config(instance_id: str) -> str:
     """Envia 'reload config' via SOAP a una instancia habilitada y devuelve la salida.
 

@@ -127,6 +127,50 @@ async function refreshStats() {
   }
 }
 
+function authServerCard(server) {
+  const stateMeta = SERVER_STATE_META[server.auth_state] || SERVER_STATE_META.offline;
+  return `
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full ${stateMeta.dot}"></span>
+          <div>
+            <h3 class="font-medium leading-tight">${escapeHtml(server.name)}</h3>
+            <p class="text-[11px] text-gray-400 leading-tight">${stateMeta.label}</p>
+          </div>
+        </div>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Authserver</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-center text-sm">
+        <div>
+          <p class="text-gray-400 text-xs">Cuentas creadas</p>
+          <p class="font-medium">${server.accounts_total != null ? server.accounts_total : '-'}</p>
+        </div>
+        <div>
+          <p class="text-gray-400 text-xs">Cuentas conectadas</p>
+          <p class="font-medium">${server.accounts_online != null ? server.accounts_online : '-'}</p>
+        </div>
+      </div>
+      <div class="flex gap-2 mt-1">
+        <button data-action="auth-start" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
+                ${server.auth_state !== 'offline' ? 'disabled' : ''}
+                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.auth_state !== 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+          Iniciar
+        </button>
+        <button data-action="auth-stop" data-id="${escapeHtml(server.id)}" data-name="${escapeHtml(server.name)}"
+                ${server.auth_state === 'offline' ? 'disabled' : ''}
+                class="flex-1 text-xs py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 ${server.auth_state === 'offline' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}">
+          Detener
+        </button>
+      </div>
+    </div>`;
+}
+
+function instanceRow(server) {
+  if (server.error) return serverCard(server);
+  return `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${authServerCard(server)}${serverCard(server)}</div>`;
+}
+
 async function refreshServers() {
   try {
     const response = await fetch('/api/servers');
@@ -137,7 +181,7 @@ async function refreshServers() {
     if (!response.ok) return;
     const servers = await response.json();
     gridEl.innerHTML = servers.length
-      ? servers.map(serverCard).join('')
+      ? servers.map(instanceRow).join('')
       : '<p class="text-sm text-gray-500 dark:text-gray-400">No hay instancias configuradas en el .env.</p>';
   } catch (err) {
     // se reintenta en el siguiente ciclo de refresco
@@ -335,10 +379,14 @@ gridEl.addEventListener('click', async (event) => {
     openLogModal(id, name);
     return;
   }
-  const actionLabel = action === 'start' ? 'iniciar' : 'detener';
+  const isAuthAction = action === 'auth-start' || action === 'auth-stop';
+  const actionLabel = (action.endsWith('start') ? 'iniciar' : 'detener') + (isAuthAction ? ' authserver' : '');
+  const url = isAuthAction
+    ? `/api/servers/${id}/auth/${action === 'auth-start' ? 'start' : 'stop'}`
+    : `/api/servers/${id}/${action}`;
   button.disabled = true;
   try {
-    const response = await fetch(`/api/servers/${id}/${action}`, { method: 'POST' });
+    const response = await fetch(url, { method: 'POST' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       showFeedback(`No se pudo ${actionLabel} "${name}": ${data.detail || 'error desconocido'}`, true);
